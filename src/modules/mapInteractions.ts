@@ -61,19 +61,16 @@ export function setupMapLoadHandler(map: Map): void {
     });
 
     loadFiltersAndUpdateMap();
-    loadIcons(map);
-    addMarkers(map);
-    setupLocationFilters();
-
-    // Apply filters again after markers are added
-    // This is extra security, especially if addMarkers is async
-    if (state.markersAdded) {
+    
+    // Load markers asynchronously for better performance
+    addMarkers(map).then(() => {
+      setupLocationFilters();
+      // Apply filters after markers are fully loaded
       applyMapFilters();
-    } else {
-      // If markers are not ready yet, try after a short delay
-      // or within addMarkers itself at the end
-      map.once('idle', applyMapFilters);
-    }
+    }).catch((error) => {
+      // Handle marker loading error gracefully
+      setupLocationFilters();
+    });
 
     // Initial animation on load
     setTimeout(() => {

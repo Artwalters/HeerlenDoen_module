@@ -32,6 +32,9 @@ import { state } from './modules/state.js';
 import { setupThreeJSLayer } from './modules/threejs.js';
 import { initialize3DSettings } from './modules/toggle3D.js';
 import { initializeTour } from './modules/tour.js';
+import { performanceMonitor } from './modules/performanceMonitor.js';
+import { eventBus, Events } from './modules/eventBus.js';
+import { resourceManager } from './modules/resourceManager.js';
 
 // Extend global Window interface
 declare global {
@@ -56,6 +59,9 @@ window.Webflow ||= [];
 window.Webflow.push(async (): Promise<void> => {
 
   try {
+    // Start performance monitoring
+    performanceMonitor.start();
+    
     // Initialize map
     const map = initializeMap();
 
@@ -97,9 +103,31 @@ window.Webflow.push(async (): Promise<void> => {
     });
 
     // Filter handlers are setup in setupLocationFilters() from filters module
+    
+    // Emit map loaded event
+    eventBus.emit(Events.MAP_LOADED, map);
 
   } catch (error) {
     // Error during map initialization
+    eventBus.emit('app:error', error);
+  }
+});
+
+// Global cleanup function for page unload
+window.addEventListener('beforeunload', () => {
+  // Clean up all systems
+  performanceMonitor.cleanup();
+  resourceManager.cleanup();
+  eventBus.cleanup();
+  
+  // Clean up geolocation manager
+  if (window.geolocationManager) {
+    window.geolocationManager.cleanup();
+  }
+  
+  // Clean up tour
+  if (window.tourCleanup) {
+    window.tourCleanup();
   }
 });
 

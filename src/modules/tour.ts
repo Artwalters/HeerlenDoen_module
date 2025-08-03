@@ -12,8 +12,14 @@ declare global {
     tourWaitingForMarkerClick?: boolean;
     markerClickFallbackTimer?: number;
     markerClickListener?: () => void;
+    tourCleanup?: () => void;
   }
 }
+
+// Tour cleanup tracking
+let tourIntervals: Set<number> = new Set();
+let tourTimeouts: Set<number> = new Set();
+let tourEventListeners: Array<{element: any, event: string, handler: Function}> = [];
 
 interface TourStep {
   id: string;
@@ -51,13 +57,17 @@ export function initializeTour(map: Map): void {
       // Check if map container exists and map has been rendered
       if (mapContainer && mapContainer.querySelector('.mapboxgl-canvas') && map && map.loaded()) {
         clearInterval(checkMapReady);
+        tourIntervals.delete(checkMapReady);
 
         // Give map additional time to render all elements properly
-        setTimeout(function () {
+        const setupTimeout = setTimeout(function () {
+          tourTimeouts.delete(setupTimeout);
           setupTourSystem(map);
         }, 2000);
+        tourTimeouts.add(setupTimeout);
       }
     }, 500);
+    tourIntervals.add(checkMapReady);
   }
 }
 
@@ -645,4 +655,50 @@ function addProgressBar(tour: any): void {
 
 export function endTour(): void {
   localStorage.setItem('heerlen-tour-completed', 'true');
+  
+  // Clean up tour resources
+  if (window.tourCleanup) {
+    window.tourCleanup();
+  }
 }
+
+/**
+ * Clean up all tour resources to prevent memory leaks
+ */
+export function cleanupTour(): void {
+  // Clear all intervals
+  tourIntervals.forEach(id => clearInterval(id));
+  tourIntervals.clear();
+  
+  // Clear all timeouts
+  tourTimeouts.forEach(id => clearTimeout(id));  
+  tourTimeouts.clear();
+  
+  // Remove all event listeners
+  tourEventListeners.forEach(({element, event, handler}) => {
+    element.removeEventListener(event, handler);
+  });
+  tourEventListeners.length = 0;
+  
+  // Clear global tour variables
+  if (window.markerClickFallbackTimer) {
+    clearTimeout(window.markerClickFallbackTimer);
+    delete window.markerClickFallbackTimer;
+  }
+  
+  if (window.activeTour) {
+    try {
+      window.activeTour.cancel();
+    } catch (e) {
+      // Tour might already be cleaned up
+    }
+    delete window.activeTour;
+  }
+  
+  delete window.tourWaitingForMarkerClick;
+  delete window.markerClickListener;
+  delete window.tourCleanup;
+}
+
+// Set global cleanup function
+window.tourCleanup = cleanupTour;

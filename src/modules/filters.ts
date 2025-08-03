@@ -4,6 +4,11 @@ import type { Map } from 'mapbox-gl';
 import { saveMapFiltersToLocalStorage } from './localStorage.js';
 import { state } from './state.js';
 
+// Performance optimization caches
+const buttonCache = new Map<string, HTMLElement>();
+const layerCache = new Map<string, boolean>();
+let buttonElements: HTMLElement[] = [];
+
 /**
  * Apply active filters to map markers
  */
@@ -24,14 +29,20 @@ export function applyMapFilters(): void {
     ];
   }
 
-  // Apply filter to all marker-related layers (if loaded)
+  // Apply filter to all marker-related layers (if loaded) - with caching
   const layersToFilter = ['location-markers', 'location-icons', 'location-labels'];
   layersToFilter.forEach((layerId) => {
-    if (state.map && state.map.getLayer(layerId)) {
+    // Use cached layer check for performance
+    if (!layerCache.has(layerId)) {
+      layerCache.set(layerId, !!(state.map && state.map.getLayer(layerId)));
+    }
+    
+    if (layerCache.get(layerId)) {
       try {
-        state.map.setFilter(layerId, filterExpression);
+        state.map!.setFilter(layerId, filterExpression);
       } catch (e) {
-        // Can happen if layer is not fully ready yet
+        // Layer might have been removed, update cache
+        layerCache.set(layerId, false);
       }
     }
   });
@@ -58,11 +69,21 @@ export function toggleFilter(category: string): void {
 }
 
 /**
- * Setup location filter buttons
+ * Setup location filter buttons with caching
  */
 export function setupLocationFilters(): void {
-  document.querySelectorAll('.filter-btn').forEach((button) => {
-    const buttonElement = button as HTMLElement;
+  // Cache button elements once
+  if (buttonElements.length === 0) {
+    buttonElements = Array.from(document.querySelectorAll('.filter-btn')) as HTMLElement[];
+    buttonElements.forEach((buttonElement) => {
+      const category = (buttonElement.dataset as any).category as string;
+      if (category) {
+        buttonCache.set(category, buttonElement);
+      }
+    });
+  }
+
+  buttonElements.forEach((buttonElement) => {
     buttonElement.addEventListener('click', () => {
       const category = (buttonElement.dataset as any).category as string; // UPPERCASE expected
       if (!category) return; // Skip buttons without category
@@ -83,16 +104,27 @@ export function setupLocationFilters(): void {
 }
 
 /**
- * Update filter button states based on active filters
+ * Update filter button states based on active filters - with caching
  */
 export function updateFilterButtonStates(): void {
-  document.querySelectorAll('.filter-btn').forEach((button) => {
-    const buttonElement = button as HTMLElement;
-    const category = (buttonElement.dataset as any).category as string;
-    if (category) {
-      buttonElement.classList.toggle('is--active', state.activeFilters.has(category));
-    }
-  });
+  // Use cached button elements if available
+  if (buttonElements.length > 0) {
+    buttonElements.forEach((buttonElement) => {
+      const category = (buttonElement.dataset as any).category as string;
+      if (category) {
+        buttonElement.classList.toggle('is--active', state.activeFilters.has(category));
+      }
+    });
+  } else {
+    // Fallback to DOM query if cache not initialized
+    document.querySelectorAll('.filter-btn').forEach((button) => {
+      const buttonElement = button as HTMLElement;
+      const category = (buttonElement.dataset as any).category as string;
+      if (category) {
+        buttonElement.classList.toggle('is--active', state.activeFilters.has(category));
+      }
+    });
+  }
 }
 
 /**

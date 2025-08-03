@@ -27,46 +27,81 @@ const excludedNames: string[] = [
   // Add more businesses here if needed
 ];
 
+// Cache for optimized POI filtering
+let poiFilterApplied = false;
+let cachedFilter: any[] | null = null;
+
 /**
- * Setup POI filtering to hide unwanted labels
+ * Build POI filter once and cache it
+ */
+function buildPOIFilter(): any[] {
+  if (cachedFilter) return cachedFilter;
+  
+  // Create a filter that checks BOTH properties
+  let filter: any[] = ['all'];
+
+  // For each name, make a NOT-condition that checks both properties
+  // If either matches, the POI should be hidden
+  excludedNames.forEach((name) => {
+    // Add a condition that checks BOTH properties
+    // If either matches, the POI should be hidden
+    filter.push([
+      'all',
+      ['!=', ['get', 'brand'], name], // Check on brand
+      ['!=', ['get', 'name'], name], // Check on name
+    ]);
+  });
+
+  // Only show POIs with a name
+  filter.push(['has', 'name']);
+  
+  cachedFilter = filter;
+  return filter;
+}
+
+/**
+ * Apply POI filter to all relevant layers
+ */
+function applyPOIFilter(map: Map): void {
+  const filter = buildPOIFilter();
+  const poiLayers: string[] = [
+    'poi-label',
+    'poi-scalerank1',
+    'poi-scalerank2',
+    'poi-scalerank3',
+    'poi-scalerank4',
+  ];
+  
+  poiLayers.forEach((layerId) => {
+    if (map.getLayer(layerId)) {
+      map.setFilter(layerId, filter);
+    }
+  });
+  
+  poiFilterApplied = true;
+}
+
+/**
+ * Setup POI filtering to hide unwanted labels - OPTIMIZED VERSION
  * @param {Map} map - The mapbox map instance
  */
 export function setupPOIFiltering(map: Map): void {
-  // Build comprehensive filter
-  map.on('idle', () => {
-    // Check if the map is fully loaded
-    if (!map.loaded()) return;
+  // Apply filter immediately if map is already loaded
+  if (map.loaded() && !poiFilterApplied) {
+    applyPOIFilter(map);
+    return;
+  }
 
-    // Create a filter that checks BOTH properties
-    let filter: any[] = ['all'];
+  // Otherwise wait for first style load or idle event
+  const handleMapReady = () => {
+    if (map.loaded() && !poiFilterApplied) {
+      applyPOIFilter(map);
+      // Remove listeners after applying filter once
+      map.off('style.load', handleMapReady);
+      map.off('idle', handleMapReady);
+    }
+  };
 
-    // For each name, make a NOT-condition that checks both properties
-    // If either matches, the POI should be hidden
-    excludedNames.forEach((name) => {
-      // Add a condition that checks BOTH properties
-      // If either matches, the POI should be hidden
-      filter.push([
-        'all',
-        ['!=', ['get', 'brand'], name], // Check on brand
-        ['!=', ['get', 'name'], name], // Check on name
-      ]);
-    });
-
-    // Only show POIs with a name
-    filter.push(['has', 'name']);
-
-    // Apply the filter to all POI layers
-    const poiLayers: string[] = [
-      'poi-label',
-      'poi-scalerank1',
-      'poi-scalerank2',
-      'poi-scalerank3',
-      'poi-scalerank4',
-    ];
-    poiLayers.forEach((layerId) => {
-      if (map.getLayer(layerId)) {
-        map.setFilter(layerId, filter);
-      }
-    });
-  });
+  map.on('style.load', handleMapReady);
+  map.on('idle', handleMapReady);
 }

@@ -86,6 +86,9 @@ export function setupPopupInteractions(popup: Popup, properties: any, coordinate
   const backContent = popupElement.querySelector('.popup-back .content-wrapper') as HTMLElement;
   const description = popupElement.querySelector('.popup-description') as HTMLElement;
   const gradient = popupElement.querySelector('#paint0_linear_3248_5') as any;
+  
+  // Track cleanup functions for proper memory management
+  const cleanupFunctions: Array<() => void> = [];
 
   // Zoek alle fade elementen
   const topFade = popupElement.querySelector('.popup-front .fade-top') as HTMLElement;
@@ -94,6 +97,7 @@ export function setupPopupInteractions(popup: Popup, properties: any, coordinate
   // Setup voor fade gradients
   if (description) {
     const cleanupFade = manageDoubleFadeGradient(description, topFade, bottomFade);
+    if (cleanupFade) cleanupFunctions.push(cleanupFade);
 
     // Beheer ook fades op de achterkant
     const backDescription = popupElement.querySelector(
@@ -108,23 +112,7 @@ export function setupPopupInteractions(popup: Popup, properties: any, coordinate
         backTopFade,
         backBottomFade
       );
-
-      // Zorg dat beide fade managers worden opgeruimd bij sluiten
-      const closeButton = popupElement.querySelector('.close-button') as HTMLElement;
-      if (closeButton) {
-        closeButton.addEventListener('click', () => {
-          if (typeof cleanupFade === 'function') cleanupFade();
-          if (typeof cleanupBackFade === 'function') cleanupBackFade();
-        });
-      }
-    } else {
-      // Alleen front fades opruimen
-      const closeButton = popupElement.querySelector('.close-button') as HTMLElement;
-      if (closeButton) {
-        closeButton.addEventListener('click', () => {
-          if (typeof cleanupFade === 'function') cleanupFade();
-        });
-      }
+      if (cleanupBackFade) cleanupFunctions.push(cleanupBackFade);
     }
 
     // Update fades bij flip
@@ -268,10 +256,14 @@ export function setupPopupInteractions(popup: Popup, properties: any, coordinate
       description.scrollTop = startScrollTop - deltaY;
     });
 
-    document.addEventListener('mouseup', () => {
+    const mouseUpHandler = () => {
       isDragging = false;
       description.style.cursor = 'grab';
-    });
+    };
+    document.addEventListener('mouseup', mouseUpHandler);
+    
+    // Track for cleanup
+    cleanupFunctions.push(() => document.removeEventListener('mouseup', mouseUpHandler));
 
     description.addEventListener('mouseleave', () => {
       isDragging = false;
@@ -345,6 +337,9 @@ export function setupPopupInteractions(popup: Popup, properties: any, coordinate
       }
 
       setTimeout(() => {
+        // Clean up all tracked event listeners and resources
+        cleanupFunctions.forEach(cleanup => cleanup());
+        
         popup.remove();
         setActivePopup(null);
 
@@ -366,6 +361,7 @@ export function setupPopupInteractions(popup: Popup, properties: any, coordinate
 
   // Update height on window resize
   window.addEventListener('resize', adjustPopupHeight);
+  cleanupFunctions.push(() => window.removeEventListener('resize', adjustPopupHeight));
 }
 
 /**

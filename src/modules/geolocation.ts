@@ -41,6 +41,9 @@ export class GeolocationManager {
   private isTracking: boolean;
   private userInitiatedGeolocation: boolean;
   public wasTracking?: boolean;
+  private eventListeners: Array<{element: any, event: string, handler: Function}> = [];
+  private timeouts: Set<number> = new Set();
+  private boundaryPopup?: HTMLElement;
 
   constructor(map: Map) {
     this.map = map;
@@ -91,11 +94,8 @@ export class GeolocationManager {
    * Create and update distance markers based on user location
    */
   private updateDistanceMarkers(userPosition: [number, number]): void {
-    // Clear existing markers
-    if (this.distanceMarkers) {
-      this.distanceMarkers.forEach((marker) => marker.remove());
-      this.distanceMarkers = [];
-    }
+    // Clear existing markers atomically
+    this.clearDistanceMarkers();
 
     // Add new markers for features within radius
     state.mapLocations.features.forEach((feature) => {
@@ -690,7 +690,7 @@ export class GeolocationManager {
     // Create new popup
     const popup = document.createElement('div');
     popup.className = 'location-boundary-popup';
-    // Debug info
+    this.boundaryPopup = popup; // Track for cleanup
 
     const heading = document.createElement('h3');
     heading.textContent = 'Kom naar Heerlen';
@@ -712,13 +712,14 @@ export class GeolocationManager {
         popup.style.transform = 'translateX(120%)';
       }
 
-      setTimeout(() => {
-        // Debug info
+      this.addTrackedTimeout(() => {
         popup.remove();
+        if (this.boundaryPopup === popup) {
+          this.boundaryPopup = undefined;
+        }
       }, 600);
 
-      setTimeout(() => {
-        // Debug info
+      this.addTrackedTimeout(() => {
         self.hideBoundaryLayers();
       }, 200);
 
@@ -750,8 +751,7 @@ export class GeolocationManager {
       this.map.setPaintProperty('boundary-fill', 'fill-opacity', 0.05);
       this.map.setPaintProperty('boundary-line', 'line-width', 3);
 
-      setTimeout(() => {
-        // Debug info
+      this.addTrackedTimeout(() => {
         if (this.map.getLayer('boundary-fill')) {
           this.map.setPaintProperty('boundary-fill', 'fill-opacity', 0.03);
         }
@@ -785,5 +785,80 @@ export class GeolocationManager {
     });
 
     // Debug info
+  }
+
+  /**
+   * Cleanup method to prevent memory leaks
+   */
+  public cleanup(): void {
+    // Clear all distance markers
+    this.clearDistanceMarkers();
+    
+    // Remove geolocate control
+    if (this.geolocateControl) {
+      this.map.removeControl(this.geolocateControl);
+      this.geolocateControl = undefined;
+    }
+    
+    // Clear all tracked timeouts
+    this.timeouts.forEach(id => clearTimeout(id));
+    this.timeouts.clear();
+    
+    // Remove all tracked event listeners
+    this.eventListeners.forEach(({element, event, handler}) => {
+      element.removeEventListener(event, handler);
+    });
+    this.eventListeners.length = 0;
+    
+    // Remove boundary popup if exists
+    if (this.boundaryPopup && this.boundaryPopup.parentNode) {
+      this.boundaryPopup.parentNode.removeChild(this.boundaryPopup);
+      this.boundaryPopup = undefined;
+    }
+    
+    // Clear map sources
+    const sources = [this.searchRadiusId, this.searchRadiusOuterId];
+    sources.forEach(sourceId => {
+      if (this.map.getSource(sourceId)) {
+        this.map.removeSource(sourceId);
+      }
+    });
+    
+    // Clear boundary layers
+    this.boundaryLayerIds.forEach(layerId => {
+      if (this.map.getLayer(layerId)) {
+        this.map.removeLayer(layerId);
+      }
+    });
+  }
+
+  /**
+   * Clear distance markers atomically
+   */
+  private clearDistanceMarkers(): void {
+    if (this.distanceMarkers.length > 0) {
+      this.distanceMarkers.forEach(marker => marker.remove());
+      this.distanceMarkers.length = 0; // Clear array atomically
+    }
+  }
+
+  /**
+   * Helper to track event listeners for cleanup
+   */
+  private addTrackedEventListener(element: any, event: string, handler: Function): void {
+    element.addEventListener(event, handler);
+    this.eventListeners.push({element, event, handler});
+  }
+
+  /**
+   * Helper to track timeouts for cleanup
+   */
+  private addTrackedTimeout(callback: Function, delay: number): number {
+    const id = window.setTimeout(() => {
+      this.timeouts.delete(id);
+      callback();
+    }, delay);
+    this.timeouts.add(id);
+    return id;
   }
 }

@@ -1,6 +1,7 @@
 // THREE.js layer module for 3D models and image planes
 
 import type { Map } from 'mapbox-gl';
+import { resourceManager } from './resourceManager.js';
 
 // Global declarations for THREE.js
 declare global {
@@ -90,37 +91,37 @@ function createImagePlane(config: ImagePlaneConfig): Promise<THREE.Mesh> {
   const geoWidth = config.width * meterScale;
   const geoHeight = config.height * meterScale;
 
-  return new Promise((resolve, reject) => {
-    const textureLoader = new THREE.TextureLoader();
-    textureLoader.load(
-      config.imageUrl,
-      (texture) => {
-        // Create material
-        const material = new THREE.MeshBasicMaterial({
-          map: texture,
-          transparent: true,
-          side: THREE.DoubleSide,
-        });
+  return resourceManager.loadOptimizedImage(config.imageUrl, { maxSize: 1024 })
+    .then((image) => {
+      // Create texture from optimized image
+      const texture = new THREE.Texture(image);
+      texture.needsUpdate = true;
+      texture.generateMipmaps = false;
+      texture.minFilter = THREE.LinearFilter;
+      texture.magFilter = THREE.LinearFilter;
 
-        // Create geometry
-        const geometry = new THREE.PlaneGeometry(geoWidth, geoHeight);
-        const plane = new THREE.Mesh(geometry, material);
+      // Create material
+      const material = new THREE.MeshBasicMaterial({
+        map: texture,
+        transparent: true,
+        side: THREE.DoubleSide,
+      });
 
-        // Store transform data
-        plane.userData.transform = {
-          translateX: mercatorCoord.x,
-          translateY: mercatorCoord.y,
-          translateZ: mercatorCoord.z,
-          rotate: config.rotate,
-          scale: 1,
-        } as Transform;
+      // Create geometry
+      const geometry = new THREE.PlaneGeometry(geoWidth, geoHeight);
+      const plane = new THREE.Mesh(geometry, material);
 
-        resolve(plane);
-      },
-      undefined,
-      (error) => reject(error)
-    );
-  });
+      // Store transform data
+      plane.userData.transform = {
+        translateX: mercatorCoord.x,
+        translateY: mercatorCoord.y,
+        translateZ: mercatorCoord.z,
+        rotate: config.rotate,
+        scale: 1,
+      } as Transform;
+
+      return plane;
+    });
 }
 
 interface CustomLayer {
@@ -186,10 +187,9 @@ export function createThreeJSLayer(): CustomLayer {
           config.altitude
         );
 
-        // Load model
-        loader.load(
-          config.url,
-          (gltf: any) => {
+        // Load model using resource manager
+        resourceManager.loadModel(config.url, loader)
+          .then((gltf: any) => {
             const scene3D = gltf.scene;
 
             // Store transform data
@@ -202,10 +202,10 @@ export function createThreeJSLayer(): CustomLayer {
             } as Transform;
 
             this.scene!.add(scene3D);
-          },
-          undefined,
-          (err: any) => {/* Error loading model */}
-        );
+          })
+          .catch((err: any) => {
+            // Error loading model - handled by resource manager
+          });
       });
 
       // Load image plane

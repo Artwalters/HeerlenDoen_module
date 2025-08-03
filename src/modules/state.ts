@@ -1,51 +1,42 @@
-// Global state management for the application
+// Legacy state module - now uses centralized state manager for better performance
 
-import type { Map, Popup } from 'mapbox-gl';
-import type { FeatureCollection, Feature } from 'geojson';
+// Re-export from the new state manager for backward compatibility
+export { stateManager, setActivePopup, setActiveFilters } from './stateManager.js';
 
-interface AppState {
-  activePopup: Popup | null;
-  markersAdded: boolean;
-  modelsAdded: boolean;
-  mapLocations: FeatureCollection;
-  activeFilters: Set<string>;
-  map: Map | null;
-}
+// Import the new state manager
+import { stateManager } from './stateManager.js';
 
-// Global state object
-export const state: AppState = {
-  activePopup: null,
-  markersAdded: false,
-  modelsAdded: false,
-  mapLocations: {
-    type: 'FeatureCollection',
-    features: [],
-  },
-  activeFilters: new Set<string>(),
-  map: null, // Will be initialized in main app
+// Simple state getter that returns current state - SIMPLIFIED for reliability
+export const state = {
+  get map() { return stateManager.getState().map; },
+  get activePopup() { return stateManager.getState().activePopup; },
+  get markersAdded() { return stateManager.getState().markersAdded; },
+  get modelsAdded() { return stateManager.getState().modelsAdded; },
+  get mapLocations() { return stateManager.getState().mapLocations; },
+  get activeFilters() { return stateManager.getState().activeFilters; },
+  
+  // Allow direct setting for compatibility
+  set map(value: any) { stateManager.setMap(value); },
+  set activePopup(value: any) { stateManager.setActivePopup(value); },
+  set markersAdded(value: boolean) { stateManager.setMarkersAdded(value); },
+  set modelsAdded(value: boolean) { stateManager.setModelsAdded(value); },
+  set mapLocations(value: any) { stateManager.updateMapLocations(value); },
+  set activeFilters(value: Set<string>) { stateManager.setActiveFilters(value); }
 };
 
-// State update functions
-export function setActivePopup(popup: Popup | null): void {
-  state.activePopup = popup;
-}
-
+// Legacy compatibility functions
 export function setMarkersAdded(value: boolean): void {
-  state.markersAdded = value;
+  stateManager.setMarkersAdded(value);
 }
 
 export function setModelsAdded(value: boolean): void {
-  state.modelsAdded = value;
+  stateManager.setModelsAdded(value);
 }
 
-export function setMap(map: Map): void {
-  state.map = map;
+export function setMap(map: any): void {
+  stateManager.setMap(map);
 }
 
 export function getActiveFilters(): Set<string> {
-  return state.activeFilters;
-}
-
-export function setActiveFilters(filters: Set<string>): void {
-  state.activeFilters = filters;
+  return stateManager.getState().activeFilters;
 }

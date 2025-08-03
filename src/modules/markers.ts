@@ -4,6 +4,7 @@ import type { Map } from 'mapbox-gl';
 import type { Feature, Point } from 'geojson';
 import { state } from './state.js';
 import { CONFIG } from './config.js';
+import { resourceManager } from './resourceManager.js';
 
 interface LocationFeature extends Feature<Point> {
   properties: {
@@ -14,44 +15,87 @@ interface LocationFeature extends Feature<Point> {
   };
 }
 
+// Icon loading cache and optimization
+const iconCache = new Map<string, HTMLImageElement>();
+const loadingIcons = new Set<string>();
+
 /**
- * Load marker icons
+ * Load marker icons with batching and caching
  */
-export function loadIcons(map: Map): void {
+export async function loadIcons(map: Map): Promise<void> {
   // Get unique icons from features
   const uniqueIcons = [...new Set(state.mapLocations.features
     .map((feature) => feature.properties.icon)
     .filter((icon): icon is string => !!icon) // Filter out null/undefined icons and type guard
   )];
 
-  // Load each icon
-  uniqueIcons.forEach((iconUrl) => {
-    // Check if image already exists
-    if (map.hasImage(iconUrl)) {
+  // Filter out already loaded and currently loading icons
+  const iconsToLoad = uniqueIcons.filter(iconUrl => 
+    !map.hasImage(iconUrl) && !loadingIcons.has(iconUrl)
+  );
+
+  if (iconsToLoad.length === 0) return;
+
+  // Mark icons as loading
+  iconsToLoad.forEach(iconUrl => loadingIcons.add(iconUrl));
+
+  // Load icons in parallel with proper error handling
+  const loadPromises = iconsToLoad.map(iconUrl => 
+    loadSingleIcon(map, iconUrl)
+      .finally(() => loadingIcons.delete(iconUrl))
+  );
+
+  // Wait for all icons to load (or fail)
+  await Promise.allSettled(loadPromises);
+}
+
+/**
+ * Load a single icon - REVERTED to direct loading for Mapbox compatibility
+ */
+async function loadSingleIcon(map: Map, iconUrl: string): Promise<void> {
+  try {
+    // Check cache first
+    if (iconCache.has(iconUrl)) {
+      const cachedImage = iconCache.get(iconUrl)!;
+      if (!map.hasImage(iconUrl)) {
+        map.addImage(iconUrl, cachedImage);
+      }
       return;
     }
+
+    // Load image directly for Mapbox compatibility
+    const image = await loadImageAsync(iconUrl);
+    iconCache.set(iconUrl, image);
     
-    map.loadImage(iconUrl, (error, image) => {
-      if (error) {
-        // Failed to load icon
-        return;
-      }
-      if (image && !map.hasImage(iconUrl)) {
-        map.addImage(iconUrl, image);
-      }
-    });
+    if (!map.hasImage(iconUrl)) {
+      map.addImage(iconUrl, image);
+    }
+  } catch (error) {
+    // Failed to load icon - continue silently
+  }
+}
+
+/**
+ * Load image asynchronously - restored for Mapbox compatibility
+ */
+function loadImageAsync(url: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error(`Failed to load icon: ${url}`));
+    img.src = url;
   });
 }
 
 /**
  * Add custom markers to map
  */
-export function addMarkers(map: Map): void {
+export async function addMarkers(map: Map): Promise<void> {
   if (state.markersAdded) return;
 
-
-  // Load icons first
-  loadIcons(map);
+  // Load icons first (wait for completion)
+  await loadIcons(map);
 
   // Add source
   map.addSource('locations', {
@@ -161,25 +205,43 @@ export function addMarkers(map: Map): void {
 }
 
 /**
- * Animate marker appearance
+ * Animate marker appearance with frame limiting
  */
 function animateMarkerAppearance(map: Map): void {
   let opacity = 0;
-  const animateMarkers = (): void => {
-    opacity += 0.1;
+  let lastFrameTime = 0;
+  const targetFPS = 30; // Limit to 30 FPS for better performance
+  const frameInterval = 1000 / targetFPS;
+  
+  const animateMarkers = (currentTime: number): void => {
+    // Frame limiting - only update if enough time has passed
+    if (currentTime - lastFrameTime < frameInterval) {
+      if (opacity < 1) {
+        requestAnimationFrame(animateMarkers);
+      }
+      return;
+    }
+    
+    lastFrameTime = currentTime;
+    opacity += 0.08; // Slightly slower animation for smoother effect
     
     // Clamp opacity to maximum of 1.0
     const clampedOpacity = Math.min(opacity, 1.0);
     
-    // Check if layers still exist before setting paint properties
-    if (map.getLayer('location-markers')) {
-      map.setPaintProperty('location-markers', 'circle-opacity', clampedOpacity);
-    }
-    if (map.getLayer('location-icons')) {
-      map.setPaintProperty('location-icons', 'icon-opacity', clampedOpacity);
-    }
-    if (map.getLayer('location-labels')) {
-      map.setPaintProperty('location-labels', 'text-opacity', clampedOpacity);
+    // Batch paint property updates for better performance
+    try {
+      if (map.getLayer('location-markers')) {
+        map.setPaintProperty('location-markers', 'circle-opacity', clampedOpacity);
+      }
+      if (map.getLayer('location-icons')) {
+        map.setPaintProperty('location-icons', 'icon-opacity', clampedOpacity);
+      }
+      if (map.getLayer('location-labels')) {
+        map.setPaintProperty('location-labels', 'text-opacity', clampedOpacity);
+      }
+    } catch (e) {
+      // Layers might have been removed during animation
+      return;
     }
 
     if (opacity < 1) {
@@ -187,7 +249,8 @@ function animateMarkerAppearance(map: Map): void {
     }
   };
 
-  setTimeout(animateMarkers, 100);
+  // Start animation after a short delay
+  setTimeout(() => requestAnimationFrame(animateMarkers), 100);
 }
 
 /**
