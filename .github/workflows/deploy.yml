@@ -54,11 +54,11 @@ jobs:
       
     - name: Create deployment structure
       run: |
-        mkdir -p deploy
-        cp -r dist/* deploy/ 2>/dev/null || true
-        cp src/index.html deploy/ 2>/dev/null || true
-        ls -la dist/
-        ls -la deploy/
+        mkdir -p public
+        cp dist/app.js public/
+        cp dist/app.css public/
+        cp src/index.html public/
+        ls -la public/
         
     - name: Setup Pages
       uses: actions/configure-pages@v3
@@ -66,7 +66,7 @@ jobs:
     - name: Upload artifact
       uses: actions/upload-pages-artifact@v2
       with:
-        path: './deploy'
+        path: './public'
 
   deploy:
     environment:

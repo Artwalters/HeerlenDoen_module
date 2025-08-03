@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HeerlenDoen Module - Demo</title>
+    <meta name="description" content="Gemodulariseerde interactieve kaart voor Heerlen - Demo versie">
+    
+    <!-- Mapbox GL JS -->
+    <script src='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js'></script>
+    <link href='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css' rel='stylesheet' />
+    
+    <!-- THREE.js voor 3D modellen -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    
+    <!-- jQuery voor DOM manipulatie -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    
+    <!-- GSAP voor animaties -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    
+    <!-- Shepherd.js voor tour functionaliteit -->
+    <script src="https://cdn.jsdelivr.net/npm/shepherd.js@11.2.0/dist/js/shepherd.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/shepherd.js@11.2.0/dist/css/shepherd.css"/>
+    
+    <!-- App CSS -->
+    <link rel="stylesheet" href="./app.css">
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+        }
+        
+        .demo-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .demo-header h1 {
+            margin: 0;
+            font-size: 2rem;
+            font-weight: 300;
+        }
+        
+        .demo-header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+        }
+        
+        #map {
+            width: 100%;
+            height: 80vh;
+            min-height: 500px;
+        }
+        
+        .demo-info {
+            background: white;
+            padding: 20px;
+            margin: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .demo-info h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        
+        .demo-links {
+            display: flex;
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .demo-links a {
+            background: #667eea;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+        
+        .demo-links a:hover {
+            background: #764ba2;
+        }
+        
+        /* Mock CMS data containers (hidden) */
+        #location-list, #location-ar-list {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-header">
+        <h1>🗺️ HeerlenDoen Module</h1>
+        <p>Gemodulariseerde interactieve kaart applicatie - Demo versie</p>
+    </div>
+    
+    <!-- Map Container -->
+    <div id="map"></div>
+    
+    <!-- Demo Info -->
+    <div class="demo-info">
+        <h3>🚀 Voor Webflow Integratie</h3>
+        <p>Deze demo toont alle modules in actie. Voor Webflow gebruik je de CDN links:</p>
+        <div class="demo-links">
+            <a href="https://artwalters.github.io/HeerlenDoen_module/app.js" target="_blank">📦 app.js</a>
+            <a href="https://artwalters.github.io/HeerlenDoen_module/app.css" target="_blank">🎨 app.css</a>
+            <a href="https://github.com/Artwalters/HeerlenDoen_module" target="_blank">🐙 GitHub</a>
+        </div>
+    </div>
+    
+    <!-- Mock CMS Data (voor demo) -->
+    <div id="location-list">
+        <div>
+            <input id="locationID" value="demo-1">
+            <input id="locationLatitude" value="50.88778">
+            <input id="locationLongitude" value="5.97939">
+            <input id="name" value="Demo Locatie 1">
+            <input id="category" value="restaurants">
+            <input id="icon" value="https://via.placeholder.com/32x32/ff6b6b/ffffff?text=R">
+            <input id="image" value="https://via.placeholder.com/300x200/ff6b6b/ffffff?text=Demo">
+            <div class="locations-map_card">
+                <h3>Demo Restaurant</h3>
+                <p>Dit is een demo locatie om de kaart functionaliteit te tonen.</p>
+            </div>
+        </div>
+        <div>
+            <input id="locationID" value="demo-2">
+            <input id="locationLatitude" value="50.88654">
+            <input id="locationLongitude" value="5.97245">
+            <input id="name" value="Demo Locatie 2">
+            <input id="category" value="winkelen">
+            <input id="icon" value="https://via.placeholder.com/32x32/4ecdc4/ffffff?text=S">
+            <input id="image" value="https://via.placeholder.com/300x200/4ecdc4/ffffff?text=Shop">
+            <div class="locations-map_card">
+                <h3>Demo Winkel</h3>
+                <p>Nog een demo locatie voor de winkel categorie.</p>
+            </div>
+        </div>
+    </div>
+    
+    <div id="location-ar-list">
+        <div>
+            <input id="latitude_ar" value="50.88801">
+            <input id="longitude_ar" value="5.98064">
+            <input id="name_ar" value="Demo AR Locatie">
+            <input id="link_ar_mobile" value="https://example.com/ar-mobile">
+            <input id="link_ar_desktop" value="https://example.com/ar-desktop">
+        </div>
+    </div>
+    
+    <!-- Mapbox Token Setup -->
+    <script>
+        // Demo Mapbox token (gebruik je eigen token in productie)
+        window.MAPBOX_ACCESS_TOKEN = 'pk.eyJ1IjoiYXJ0d2FsdGVycyIsImEiOiJjbHY0bXJ2dXMxbXFiMmtrYnV5eWVlaTZlIn0.7sQPGW9qcw-fMKKt8I-UJQ';
+        
+        // Mock Webflow object
+        window.Webflow = window.Webflow || [];
+    </script>
+    
+    <!-- Main App -->
+    <script src="./app.js"></script>
+</body>
+</html>
