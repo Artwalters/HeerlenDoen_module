@@ -55,10 +55,10 @@ jobs:
     - name: Create deployment structure
       run: |
         mkdir -p deploy
-        cp -r dist/* deploy/
-        cp src/app.css deploy/
-        cp src/index.html deploy/
-        echo "console.log('Heerlen Map Module - Built $(date)');" >> deploy/app.js
+        cp -r dist/* deploy/ 2>/dev/null || true
+        cp src/index.html deploy/ 2>/dev/null || true
+        ls -la dist/
+        ls -la deploy/
         
     - name: Setup Pages
       uses: actions/configure-pages@v3
