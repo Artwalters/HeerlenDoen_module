@@ -8,7 +8,6 @@ import { state } from './state.js';
  * Apply active filters to map markers
  */
 export function applyMapFilters(): void {
-  console.log('Applying map filters:', Array.from(state.activeFilters));
   
   let filterExpression: any[] | null;
 
@@ -32,7 +31,6 @@ export function applyMapFilters(): void {
       try {
         state.map.setFilter(layerId, filterExpression);
       } catch (e) {
-        console.warn(`Could not apply filter to layer ${layerId}:`, e);
         // Can happen if layer is not fully ready yet
       }
     }

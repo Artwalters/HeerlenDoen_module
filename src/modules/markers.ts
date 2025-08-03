@@ -33,7 +33,7 @@ export function loadIcons(map: Map): void {
     
     map.loadImage(iconUrl, (error, image) => {
       if (error) {
-        console.warn('Failed to load icon:', iconUrl, error);
+        // Failed to load icon
         return;
       }
       if (image && !map.hasImage(iconUrl)) {
@@ -49,7 +49,6 @@ export function loadIcons(map: Map): void {
 export function addMarkers(map: Map): void {
   if (state.markersAdded) return;
 
-  console.log('Adding markers to map...');
 
   // Load icons first
   loadIcons(map);
@@ -208,7 +207,6 @@ function setupMarkerInteractions(map: Map): void {
  * Update marker visibility based on zoom level
  */
 export function updateMarkerVisibility(map: Map, zoom: number): void {
-  console.log('Updating marker visibility for zoom:', zoom);
   
   // You can add zoom-based visibility logic here if needed
   // For now, the visibility is handled by the interpolation expressions in the layer styles
@@ -236,6 +234,5 @@ export function updateMarkersData(map: Map): void {
   const source = map.getSource('locations');
   if (source && 'setData' in source) {
     (source as any).setData(state.mapLocations);
-    console.log('Markers data updated');
   }
 }

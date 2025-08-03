@@ -55,9 +55,6 @@ export class GeolocationManager {
     this.isFirstLocation = true;
     this.isTracking = false;
     this.userInitiatedGeolocation = false;
-    console.log('[DEBUG] GeolocationManager initialized.');
-    console.log('[DEBUG] Boundary Center:', this.centerPoint);
-    console.log('[DEBUG] Boundary Radius (km):', this.boundaryRadius);
     this.initialize();
   }
 
@@ -77,7 +74,6 @@ export class GeolocationManager {
     if (this.geolocateControl && (this.geolocateControl as any)._watchState === 'ACTIVE_LOCK') {
       this.wasTracking = true;
       (this.geolocateControl as any)._watchState = 'ACTIVE_ERROR';
-      console.log('Geolocation tracking paused');
     }
   }
 
@@ -88,7 +84,6 @@ export class GeolocationManager {
     if (this.geolocateControl && this.wasTracking) {
       (this.geolocateControl as any)._watchState = 'ACTIVE_LOCK';
       this.wasTracking = false;
-      console.log('Geolocation tracking resumed');
     }
   }
 
@@ -140,16 +135,14 @@ export class GeolocationManager {
   // Handle user location updates
   private handleUserLocation(position: GeolocationPosition): void {
     const userPosition: [number, number] = [position.coords.longitude, position.coords.latitude];
-    console.log('[DEBUG] handleUserLocation - User Position:', userPosition);
 
     if (this.isWithinBoundary(userPosition)) {
-      console.log('[DEBUG] handleUserLocation - User is INSIDE boundary.');
       this.updateSearchRadius(userPosition);
       this.updateDistanceMarkers(userPosition);
 
       if (!this.isPopupOpen) {
         if (this.isFirstLocation) {
-          console.log('[DEBUG] handleUserLocation - First location detected, flying to user.');
+          // Debug info
           this.map.flyTo({
             center: userPosition,
             zoom: 17.5,
@@ -168,7 +161,7 @@ export class GeolocationManager {
           );
 
           if (distanceChange > 0.05) {
-            console.log('[DEBUG] handleUserLocation - Easing to new user position.');
+            // Debug info
             this.map.easeTo({
               center: userPosition,
               duration: 1000,
@@ -176,10 +169,10 @@ export class GeolocationManager {
           }
         }
       } else {
-        console.log('[DEBUG] handleUserLocation - Popup is open, map movement skipped.');
+        // Debug info
       }
     } else {
-      console.warn('[DEBUG] handleUserLocation - User is OUTSIDE boundary. Stopping tracking.');
+      // Debug info
       (this.geolocateControl as any)._watchState = 'OFF';
       if ((this.geolocateControl as any)._geolocateButton) {
         (this.geolocateControl as any)._geolocateButton.classList.remove(
@@ -197,12 +190,10 @@ export class GeolocationManager {
         this.distanceMarkers = [];
       }
 
-      console.log(
-        '[DEBUG] handleUserLocation - Calling showBoundaryPopup because user moved outside.'
-      );
+      // Debug info
       this.showBoundaryPopup();
 
-      console.log('[DEBUG] handleUserLocation - Flying to Heerlen center.');
+      // Debug info
       this.map.flyTo({
         center: this.centerPoint,
         zoom: 14,
@@ -249,21 +240,14 @@ export class GeolocationManager {
     const originalOnSuccess = (this.geolocateControl as any)._onSuccess;
     (this.geolocateControl as any)._onSuccess = (position: GeolocationPosition) => {
       const userPosition: [number, number] = [position.coords.longitude, position.coords.latitude];
-      console.log('[DEBUG] _onSuccess - Position received:', userPosition);
+      // Debug info
 
       const isWithin = this.isWithinBoundary(userPosition);
-      console.log(
-        '[DEBUG] _onSuccess - Before check: userInitiatedGeolocation =',
-        this.userInitiatedGeolocation,
-        ', isWithinBoundary =',
-        isWithin
-      );
+      // Debug info
 
       // Only do boundary check if user clicked the button
       if (this.userInitiatedGeolocation && !isWithin) {
-        console.warn(
-          '[DEBUG] _onSuccess - User clicked AND is outside boundary. Preventing geolocation and showing popup.'
-        );
+        // Debug info
 
         // Reset geolocate control state
         (this.geolocateControl as any)._watchState = 'OFF';
@@ -274,48 +258,42 @@ export class GeolocationManager {
           (this.geolocateControl as any)._geolocateButton.classList.remove(
             'mapboxgl-ctrl-geolocate-waiting'
           );
-          console.log('[DEBUG] _onSuccess - Geolocate button classes removed.');
+          // Debug info
         }
 
         // Show boundary popup and highlight boundary
         this.showBoundaryLayers();
-        console.log('[DEBUG] _onSuccess - Calling showBoundaryPopup().');
+        // Debug info
         this.showBoundaryPopup();
 
         // Remove any user location marker that might have been added
         if ((this.geolocateControl as any)._userLocationDotMarker) {
-          console.log('[DEBUG] _onSuccess - Removing user location dot marker.');
+          // Debug info
           (this.geolocateControl as any)._userLocationDotMarker.remove();
         }
 
         this.userInitiatedGeolocation = false;
-        console.log('[DEBUG] _onSuccess - userInitiatedGeolocation flag reset to false.');
+        // Debug info
         return;
       }
 
-      console.log(
-        '[DEBUG] _onSuccess - User is within boundary OR check was not user-initiated. Proceeding with original _onSuccess.'
-      );
+      // Debug info
       originalOnSuccess.call(this.geolocateControl, position);
       this.userInitiatedGeolocation = false;
-      console.log(
-        '[DEBUG] _onSuccess - userInitiatedGeolocation flag reset after normal processing.'
-      );
+      // Debug info
     };
 
     // Handle errors
     this.geolocateControl.on('error', (error: GeolocationError) => {
-      console.error('[DEBUG] Geolocation error event triggered:', error);
+      // Debug info
       if (this.userInitiatedGeolocation) {
-        console.warn('[DEBUG] Geolocation error occurred after user initiated the request.');
+        // Debug info
         this.handleGeolocationError(error);
       } else {
-        console.log(
-          '[DEBUG] Geolocation error occurred during automatic tracking or initial load.'
-        );
+        // Debug info
       }
       this.userInitiatedGeolocation = false;
-      console.log('[DEBUG] Geolocation error - userInitiatedGeolocation flag reset.');
+      // Debug info
     });
 
     // Setup the button click handler
@@ -325,29 +303,26 @@ export class GeolocationManager {
         geolocateButton.addEventListener(
           'click',
           (event) => {
-            console.log(
-              '[DEBUG] Geolocate button CLICKED. Setting userInitiatedGeolocation = true.'
-            );
+            // Debug info
             this.userInitiatedGeolocation = true;
-            console.log('[DEBUG] Geolocate button click - Showing boundary layers.');
+            // Debug info
             this.showBoundaryLayers();
           },
           true
         );
       } else {
-        console.warn('[DEBUG] Could not find geolocate button after map idle.');
+        // Debug info
       }
     });
 
     this.geolocateControl.on('trackuserlocationstart', () => {
-      console.log('Location tracking started');
-      console.log('[DEBUG] trackuserlocationstart event - Showing boundary layers.');
+      // Debug info
       this.isTracking = true;
       this.showBoundaryLayers();
     });
 
     this.geolocateControl.on('trackuserlocationend', () => {
-      console.log('Location tracking ended');
+      // Debug info
       this.isTracking = false;
       this.isFirstLocation = true;
       this.map.easeTo({ bearing: 0, pitch: 45 });
@@ -370,7 +345,7 @@ export class GeolocationManager {
   private setupSearchRadius(): void {
     this.map.on('load', () => {
       if (this.map.getSource(this.searchRadiusId)) {
-        console.log('[DEBUG] Search radius source already exists on load.');
+        // Debug info
         return;
       }
       // Setup inner radius
@@ -414,7 +389,7 @@ export class GeolocationManager {
           'fill-extrusion-base': 0,
         },
       });
-      console.log('[DEBUG] Search radius layers added.');
+      // Debug info
     });
   }
 
@@ -424,7 +399,7 @@ export class GeolocationManager {
   private setupBoundaryCheck(): void {
     this.map.on('load', () => {
       if (this.map.getSource('boundary-circle')) {
-        console.log('[DEBUG] Boundary circle source already exists on load.');
+        // Debug info
         return;
       }
       this.map.addSource('boundary-circle', {
@@ -458,7 +433,7 @@ export class GeolocationManager {
           visibility: 'none',
         },
       });
-      console.log('[DEBUG] Boundary check layers added.');
+      // Debug info
     });
   }
 
@@ -466,7 +441,7 @@ export class GeolocationManager {
    * Show boundary visualization with animation
    */
   private showBoundaryLayers(): void {
-    console.log('[DEBUG] showBoundaryLayers called.');
+    // Debug info
     this.boundaryLayerIds.forEach((layerId) => {
       if (this.map.getLayer(layerId)) {
         this.map.setLayoutProperty(layerId, 'visibility', 'visible');
@@ -483,7 +458,7 @@ export class GeolocationManager {
           animateOpacity();
         }
       } else {
-        console.warn(`[DEBUG] Layer ${layerId} not found in showBoundaryLayers.`);
+        // Debug info
       }
     });
   }
@@ -492,7 +467,7 @@ export class GeolocationManager {
    * Hide boundary visualization with animation
    */
   private hideBoundaryLayers(): void {
-    console.log('[DEBUG] hideBoundaryLayers called.');
+    // Debug info
     this.boundaryLayerIds.forEach((layerId) => {
       if (this.map.getLayer(layerId)) {
         if (layerId === 'boundary-fill') {
@@ -516,7 +491,7 @@ export class GeolocationManager {
           this.map.setLayoutProperty(layerId, 'visibility', 'none');
         }
       } else {
-        console.warn(`[DEBUG] Layer ${layerId} not found in hideBoundaryLayers.`);
+        // Debug info
       }
     });
   }
@@ -526,7 +501,7 @@ export class GeolocationManager {
    */
   private updateSearchRadius(center: [number, number]): void {
     if (!this.map.getSource(this.searchRadiusId)) {
-      console.warn('[DEBUG] updateSearchRadius - Source not found:', this.searchRadiusId);
+      // Debug info
       return;
     }
 
@@ -575,7 +550,7 @@ export class GeolocationManager {
           },
         });
       } else {
-        console.warn(`[DEBUG] updateSearchRadius - Source not found during update: ${sourceId}`);
+        // Debug info
       }
     });
   }
@@ -596,11 +571,11 @@ export class GeolocationManager {
             },
           });
         } else {
-          console.warn(`[DEBUG] clearSearchRadius - Source not found: ${sourceId}`);
+          // Debug info
         }
       });
     } else {
-      console.warn('[DEBUG] clearSearchRadius - Source not found initially:', this.searchRadiusId);
+      // Debug info
     }
   }
 
@@ -608,9 +583,7 @@ export class GeolocationManager {
    * Handle geolocation errors
    */
   private handleGeolocationError(error: GeolocationError): void {
-    console.error('[DEBUG] handleGeolocationError called with error:', error);
-    console.error('Geolocation error code:', error.code);
-    console.error('Geolocation error message:', error.message);
+    // Debug info
 
     const errorMessages: Record<number, string> = {
       1: 'Locatie toegang geweigerd. Schakel het in bij je instellingen.',
@@ -626,7 +599,7 @@ export class GeolocationManager {
    * Show notification to user
    */
   private showNotification(message: string): void {
-    console.log('[DEBUG] Displaying notification:', message);
+    // Debug info
     const notification = document.createElement('div');
     notification.className = 'geolocation-error-notification';
     notification.textContent = message;
@@ -705,19 +678,19 @@ export class GeolocationManager {
    * Show boundary popup when user is outside boundary
    */
   private showBoundaryPopup(): void {
-    console.log('[DEBUG] showBoundaryPopup started.');
+    // Debug info
 
     // Remove existing popup if any
     const existingPopup = document.querySelector('.location-boundary-popup');
     if (existingPopup) {
-      console.log('[DEBUG] Removing existing location-boundary-popup.');
+      // Debug info
       existingPopup.remove();
     }
 
     // Create new popup
     const popup = document.createElement('div');
     popup.className = 'location-boundary-popup';
-    console.log('[DEBUG] Created new popup element.');
+    // Debug info
 
     const heading = document.createElement('h3');
     heading.textContent = 'Kom naar Heerlen';
@@ -732,7 +705,7 @@ export class GeolocationManager {
     // Handle button click
     const self = this;
     button.addEventListener('click', function () {
-      console.log('[DEBUG] Boundary popup button clicked.');
+      // Debug info
       if (window.innerWidth <= 768) {
         popup.style.transform = 'translateY(100%)';
       } else {
@@ -740,19 +713,19 @@ export class GeolocationManager {
       }
 
       setTimeout(() => {
-        console.log('[DEBUG] Removing boundary popup after click.');
+        // Debug info
         popup.remove();
       }, 600);
 
       setTimeout(() => {
-        console.log('[DEBUG] Hiding boundary layers after popup button click.');
+        // Debug info
         self.hideBoundaryLayers();
       }, 200);
 
       // Fly back to intro animation location
       const finalZoom = window.matchMedia('(max-width: 479px)').matches ? 17 : 18;
 
-      console.log('[DEBUG] Flying back to intro location after popup button click.');
+      // Debug info
       self.map.flyTo({
         center: CONFIG.MAP.center,
         zoom: finalZoom,
@@ -769,16 +742,16 @@ export class GeolocationManager {
     popup.appendChild(text);
     popup.appendChild(button);
     document.body.appendChild(popup);
-    console.log('[DEBUG] Boundary popup appended to document body.');
+    // Debug info
 
     // Highlight boundary
     if (this.map.getLayer('boundary-fill')) {
-      console.log('[DEBUG] Highlighting boundary layers.');
+      // Debug info
       this.map.setPaintProperty('boundary-fill', 'fill-opacity', 0.05);
       this.map.setPaintProperty('boundary-line', 'line-width', 3);
 
       setTimeout(() => {
-        console.log('[DEBUG] Resetting boundary layer highlight.');
+        // Debug info
         if (this.map.getLayer('boundary-fill')) {
           this.map.setPaintProperty('boundary-fill', 'fill-opacity', 0.03);
         }
@@ -787,12 +760,12 @@ export class GeolocationManager {
         }
       }, 2000);
     } else {
-      console.warn('[DEBUG] Boundary layers not found for highlighting in showBoundaryPopup.');
+      // Debug info
     }
 
     // Fly to center to show the boundary (only if not already flying)
     if (!this.map.isMoving() && !this.map.isEasing()) {
-      console.log('[DEBUG] Flying to boundary center to show the area.');
+      // Debug info
       this.map.flyTo({
         center: this.centerPoint,
         zoom: 14,
@@ -801,18 +774,16 @@ export class GeolocationManager {
         duration: 1500,
       });
     } else {
-      console.log(
-        '[DEBUG] Skipping flyTo center in showBoundaryPopup because map is already moving.'
-      );
+      // Debug info
     }
 
     // Show popup with animation
     requestAnimationFrame(() => {
       popup.offsetHeight;
       popup.classList.add('show');
-      console.log("[DEBUG] Added 'show' class to boundary popup.");
+      // Debug info
     });
 
-    console.log('[DEBUG] showBoundaryPopup finished.');
+    // Debug info
   }
 }

@@ -181,7 +181,7 @@ function loadPerformanceSettings(): void {
         localStorage.getItem('performance_tooltip_shown') === 'true';
     }
   } catch (e) {
-    console.warn('Failed to load performance settings');
+    // Failed to load performance settings
   }
 }
 
@@ -356,11 +356,9 @@ export function initialize3DSettings(map: Map): void {
 
 // Placeholder functions for tooltips and warnings - these would need implementation
 function showPerformanceTooltip(button: HTMLButtonElement): void {
-  console.log('Performance tooltip should be shown');
   // Implementation would show a tooltip about performance
 }
 
 function showPerformanceWarning(): void {
-  console.log('Performance warning should be shown');
   // Implementation would show a warning about low performance
 }

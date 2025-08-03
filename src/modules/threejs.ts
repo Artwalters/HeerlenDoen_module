@@ -204,7 +204,7 @@ export function createThreeJSLayer(): CustomLayer {
             this.scene!.add(scene3D);
           },
           undefined,
-          (err: any) => console.error(err)
+          (err: any) => {/* Error loading model */}
         );
       });
 
@@ -213,7 +213,7 @@ export function createThreeJSLayer(): CustomLayer {
         .then((plane) => {
           this.scene!.add(plane);
         })
-        .catch((err) => console.error('Error loading image plane:', err));
+        .catch((err) => {/* Error loading image plane */});
     },
 
     render: function (gl: WebGLRenderingContext, matrix: number[]) {

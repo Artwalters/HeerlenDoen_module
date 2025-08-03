@@ -16,7 +16,7 @@ export function saveMapFiltersToLocalStorage(): void {
     const filtersArray = Array.from(state.activeFilters);
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(filtersArray));
   } catch (e) {
-    console.error('Kon kaartfilters niet opslaan in localStorage:', e);
+    // Could not save map filters to localStorage
   }
 }
 
@@ -45,7 +45,6 @@ export function loadFiltersAndUpdateMap(): void {
     const activeCategories: string[] = storedFilters ? JSON.parse(storedFilters) : [];
     updateMapState(activeCategories);
   } catch (e) {
-    console.error('Kon filters niet laden/parsen uit localStorage voor kaart:', e);
     updateMapState([]);
   }
 }

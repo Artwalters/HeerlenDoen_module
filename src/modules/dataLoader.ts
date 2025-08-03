@@ -89,7 +89,6 @@ function getRobustValue(
   itemType: string = 'item'
 ): any {
   if (!parentElement) {
-    console.warn(`[getRobustValue] Invalid parentElement provided for selector '${selector}'`);
     return defaultValue;
   }
 
@@ -100,17 +99,12 @@ function getRobustValue(
     if (property in targetElement) {
       return (targetElement as any)[property];
     }
-    // Log if the property doesn't exist on the found element
-    console.warn(
-      `[Data Loading] Property '${property}' not found on element with selector '${selector}' in ${itemType} item ${itemIndex}. Using default.`
-    );
+    // Property doesn't exist on the found element
     return defaultValue;
   }
-  // Log if a required element is missing
+  // Required element is missing
   if (isRequired) {
-    console.warn(
-      `[Data Loading] Required element with selector '${selector}' not found in ${itemType} item ${itemIndex}. Cannot process fully.`
-    );
+    // Cannot process fully
   }
   // Return default even if not required, just don't log unless required
   return defaultValue;
@@ -121,15 +115,11 @@ function getRobustValue(
  * Skips items with invalid coordinates.
  */
 export function getGeoData(): void {
-  console.log('[Data Loading] Starting getGeoData...');
   const locationList = document.getElementById('location-list');
   let loadedCount = 0;
   let skippedCount = 0;
 
   if (!locationList) {
-    console.error(
-      "[Data Loading] CRITICAL: Element with ID 'location-list' not found. Cannot load geo data."
-    );
     return; // Stop if the main container is missing
   }
 
@@ -171,9 +161,6 @@ export function getGeoData(): void {
       const locationLong = parseFloat(rawLong);
 
       if (isNaN(locationLat) || isNaN(locationLong)) {
-        console.warn(
-          `[Data Loading] Skipping location item ${index} (Attempted ID: ${locationID}) due to invalid or missing coordinates. Lat='${rawLat}', Long='${rawLong}'`
-        );
         skippedCount++;
         return; // Go to the next iteration/element
       }
@@ -265,16 +252,11 @@ export function getGeoData(): void {
         state.mapLocations.features.push(feature);
         loadedCount++;
       } else {
-        console.warn(
-          `[Data Loading] Duplicate location ID found and skipped: ${locationData.locationID} at index ${index}`
-        );
+        // Duplicate location ID found and skipped
         skippedCount++;
       }
     });
 
-  console.log(
-    `[Data Loading] getGeoData finished. Loaded: ${loadedCount}, Skipped (invalid/duplicate): ${skippedCount}`
-  );
 }
 
 /**
@@ -282,16 +264,12 @@ export function getGeoData(): void {
  * Skips items with invalid coordinates.
  */
 export function getARData(): void {
-  console.log('[Data Loading] Starting getARData...');
   const arLocationList = document.getElementById('location-ar-list');
   let loadedCount = 0;
   let skippedCount = 0;
   const startIndex = state.mapLocations.features.length; // Start index after regular locations
 
   if (!arLocationList) {
-    console.error(
-      "[Data Loading] CRITICAL: Element with ID 'location-ar-list' not found. Cannot load AR data."
-    );
     return; // Stop if the main container is missing
   }
 
@@ -335,9 +313,6 @@ export function getARData(): void {
       const longitude_ar = parseFloat(rawLong);
 
       if (isNaN(latitude_ar) || isNaN(longitude_ar)) {
-        console.warn(
-          `[Data Loading] Skipping AR item ${itemIndexForLog} (Name: ${name_ar}) due to invalid or missing coordinates. Lat='${rawLat}', Long='${rawLong}'`
-        );
         skippedCount++;
         return; // Go to the next iteration/element
       }
@@ -395,9 +370,7 @@ export function getARData(): void {
 
       // Check if required AR links are present
       if (!arData.link_ar_mobile && !arData.link_ar_desktop) {
-        console.warn(
-          `[Data Loading] Skipping AR item ${itemIndexForLog} (Name: ${name_ar}) due to missing required AR links (both mobile and desktop).`
-        );
+        // Skipping AR item: missing required AR links
         skippedCount++;
         return;
       }
@@ -431,16 +404,12 @@ export function getARData(): void {
       loadedCount++;
     });
 
-  console.log(
-    `[Data Loading] getARData finished. Loaded: ${loadedCount}, Skipped (invalid/missing required): ${skippedCount}`
-  );
 }
 
 /**
  * Main function to load all location data
  */
 export async function loadLocationData(): Promise<typeof state.mapLocations> {
-  console.log('[Data Loading] Starting location data loading...');
 
   // Reset mapLocations in case this script runs multiple times
   state.mapLocations.features = [];
@@ -449,7 +418,6 @@ export async function loadLocationData(): Promise<typeof state.mapLocations> {
   getGeoData();
   getARData();
 
-  console.log('[Data Loading] Location data loading completed');
 
   // Return the loaded data
   return state.mapLocations;
@@ -464,10 +432,7 @@ export function updateMapSource(map: Map): void {
     const source = map.getSource('locations');
     if (source && 'setData' in source) {
       (source as any).setData(state.mapLocations);
-      console.log("[Data Loading] Map source 'locations' updated.");
     }
-  } else {
-    console.log("[Data Loading] Map source 'locations' not found yet, will be added later.");
   }
 }
 

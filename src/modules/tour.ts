@@ -644,6 +644,5 @@ function addProgressBar(tour: any): void {
 }
 
 export function endTour(): void {
-  console.log('Ending tour...');
   localStorage.setItem('heerlen-tour-completed', 'true');
 }

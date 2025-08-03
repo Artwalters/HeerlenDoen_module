@@ -54,7 +54,6 @@ declare global {
 // Initialize when Webflow is ready
 window.Webflow ||= [];
 window.Webflow.push(async (): Promise<void> => {
-  console.log('Initializing Heerlen Interactive Map...');
 
   try {
     // Initialize map
@@ -99,10 +98,8 @@ window.Webflow.push(async (): Promise<void> => {
 
     // Filter handlers are setup in setupLocationFilters() from filters module
 
-    // Log successful initialization
-    console.log('Heerlen Interactive Map initialized successfully!');
   } catch (error) {
-    console.error('Error initializing map:', error);
+    // Error during map initialization
   }
 });
 
