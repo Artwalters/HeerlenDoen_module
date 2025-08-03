@@ -2,7 +2,7 @@
 
 import type { Map } from 'mapbox-gl';
 import { saveMapFiltersToLocalStorage } from './localStorage.js';
-import { state } from './state.js';
+import { state, stateManager } from './state.js';
 
 // Performance optimization caches
 const buttonCache = new Map<string, HTMLElement>();
@@ -13,17 +13,19 @@ let buttonElements: HTMLElement[] = [];
  * Apply active filters to map markers
  */
 export function applyMapFilters(): void {
+  // Get current active filters from state
+  const currentFilters = state.activeFilters;
   
   let filterExpression: any[] | null;
 
-  if (state.activeFilters.size === 0) {
+  if (!currentFilters || currentFilters.size === 0) {
     // No filter - show everything
     filterExpression = null;
   } else {
     // Combine active filters WITH markers without category
     filterExpression = [
       'any', // OR condition
-      ['in', ['get', 'category'], ['literal', Array.from(state.activeFilters)]], // Markers with active categories
+      ['in', ['get', 'category'], ['literal', Array.from(currentFilters)]], // Markers with active categories
       ['!', ['has', 'category']], // Markers without category property
       ['==', ['get', 'category'], ''], // Markers with empty category
     ];
@@ -57,12 +59,18 @@ export function applyMapFilters(): void {
 export function toggleFilter(category: string): void {
   if (!category) return; // Skip buttons without category
 
+  // Get current filters
+  const currentFilters = new Set(state.activeFilters);
+  
   // Update the Set
-  if (state.activeFilters.has(category)) {
-    state.activeFilters.delete(category);
+  if (currentFilters.has(category)) {
+    currentFilters.delete(category);
   } else {
-    state.activeFilters.add(category);
+    currentFilters.add(category);
   }
+  
+  // Update state manager
+  stateManager.setActiveFilters(currentFilters);
 
   // Apply the map filters
   applyMapFilters();
@@ -88,14 +96,19 @@ export function setupLocationFilters(): void {
       const category = (buttonElement.dataset as any).category as string; // UPPERCASE expected
       if (!category) return; // Skip buttons without category
 
-      // Update the Set
-      if (state.activeFilters.has(category)) {
-        state.activeFilters.delete(category);
+      // Get current filters and update
+      const currentFilters = new Set(state.activeFilters);
+      
+      if (currentFilters.has(category)) {
+        currentFilters.delete(category);
         buttonElement.classList.remove('is--active'); // Explicitly remove
       } else {
-        state.activeFilters.add(category);
+        currentFilters.add(category);
         buttonElement.classList.add('is--active'); // Explicitly add
       }
+      
+      // Update state manager
+      stateManager.setActiveFilters(currentFilters);
 
       // Apply the map filters
       applyMapFilters();
@@ -107,12 +120,14 @@ export function setupLocationFilters(): void {
  * Update filter button states based on active filters - with caching
  */
 export function updateFilterButtonStates(): void {
+  const currentFilters = state.activeFilters;
+  
   // Use cached button elements if available
   if (buttonElements.length > 0) {
     buttonElements.forEach((buttonElement) => {
       const category = (buttonElement.dataset as any).category as string;
       if (category) {
-        buttonElement.classList.toggle('is--active', state.activeFilters.has(category));
+        buttonElement.classList.toggle('is--active', currentFilters.has(category));
       }
     });
   } else {
@@ -121,7 +136,7 @@ export function updateFilterButtonStates(): void {
       const buttonElement = button as HTMLElement;
       const category = (buttonElement.dataset as any).category as string;
       if (category) {
-        buttonElement.classList.toggle('is--active', state.activeFilters.has(category));
+        buttonElement.classList.toggle('is--active', currentFilters.has(category));
       }
     });
   }
@@ -131,7 +146,7 @@ export function updateFilterButtonStates(): void {
  * Clear all active filters
  */
 export function clearAllFilters(): void {
-  state.activeFilters.clear();
+  stateManager.clearFilters();
   updateFilterButtonStates();
   applyMapFilters();
 }
@@ -140,8 +155,8 @@ export function clearAllFilters(): void {
  * Set specific filters
  */
 export function setFilters(categories: string[]): void {
-  state.activeFilters.clear();
-  categories.forEach(category => state.activeFilters.add(category));
+  const newFilters = new Set(categories);
+  stateManager.setActiveFilters(newFilters);
   updateFilterButtonStates();
   applyMapFilters();
 }

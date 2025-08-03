@@ -1,7 +1,7 @@
 // Local storage utilities for filter management
 
 import { LOCAL_STORAGE_KEY } from './config.js';
-import { setActiveFilters, state } from './state.js';
+import { setActiveFilters, state, stateManager } from './state.js';
 
 // Extend Window interface for global functions
 declare global {
@@ -22,13 +22,14 @@ export function saveMapFiltersToLocalStorage(): void {
 
 // Update the Set, map filters and button UI based on categories array
 export function updateMapState(activeCategories: string[] = []): void {
-  setActiveFilters(new Set(activeCategories));
+  const newFilters = new Set(activeCategories);
+  stateManager.setActiveFilters(newFilters);
 
   // Update visual state of buttons
   document.querySelectorAll<HTMLElement>('.filter-btn').forEach((button) => {
     const { category } = button.dataset;
     if (category) {
-      button.classList.toggle('is--active', state.activeFilters.has(category));
+      button.classList.toggle('is--active', newFilters.has(category));
     }
   });
 
