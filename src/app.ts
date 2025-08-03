@@ -13,8 +13,12 @@ import { loadLocationData, updateMapSource } from './modules/dataLoader.js';
 import { applyMapFilters, setupLocationFilters, toggleFilter } from './modules/filters.js';
 import { GeolocationManager } from './modules/geolocation.js';
 import { loadFiltersAndUpdateMap } from './modules/localStorage.js';
-import { setupMapInteractionHandlers, setupMapLoadHandler, setupSidebarHandlers } from './modules/mapInteractions.js';
 import { initializeMap } from './modules/mapInit.js';
+import {
+  setupMapInteractionHandlers,
+  setupMapLoadHandler,
+  setupSidebarHandlers,
+} from './modules/mapInteractions.js';
 import { addMarkers, updateMarkersData, updateMarkerVisibility } from './modules/markers.js';
 import { setupPOIFiltering } from './modules/poi.js';
 import {
@@ -29,9 +33,27 @@ import { setupThreeJSLayer } from './modules/threejs.js';
 import { initialize3DSettings } from './modules/toggle3D.js';
 import { initializeTour } from './modules/tour.js';
 
+// Extend global Window interface
+declare global {
+  interface Window {
+    Webflow: Array<() => void | Promise<void>>;
+    map: any;
+    geolocationManager: GeolocationManager;
+    HeerlenMap: {
+      getState: () => typeof state;
+      getConfig: () => typeof CONFIG;
+      closePopup: () => void;
+      toggleFilter: (category: string) => void;
+    };
+    handleSnapchatLink: (url: string) => void;
+    showImagePopup: (imageSrc: string, title?: string) => void;
+    closeItem: () => void;
+  }
+}
+
 // Initialize when Webflow is ready
 window.Webflow ||= [];
-window.Webflow.push(async () => {
+window.Webflow.push(async (): Promise<void> => {
   console.log('Initializing Heerlen Interactive Map...');
 
   try {
@@ -75,18 +97,7 @@ window.Webflow.push(async () => {
       }
     });
 
-    // Setup filter button handlers
-    document.addEventListener('DOMContentLoaded', () => {
-      document.querySelectorAll('.filter-btn').forEach((button) => {
-        button.addEventListener('click', () => {
-          const { category } = button.dataset;
-          if (category) {
-            toggleFilter(category);
-            button.classList.toggle('is--active');
-          }
-        });
-      });
-    });
+    // Filter handlers are setup in setupLocationFilters() from filters module
 
     // Log successful initialization
     console.log('Heerlen Interactive Map initialized successfully!');

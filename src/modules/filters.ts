@@ -1,15 +1,16 @@
 // Filter management module
 
+import type { Map } from 'mapbox-gl';
 import { saveMapFiltersToLocalStorage } from './localStorage.js';
 import { state } from './state.js';
 
 /**
  * Apply active filters to map markers
  */
-export function applyMapFilters() {
+export function applyMapFilters(): void {
   console.log('Applying map filters:', Array.from(state.activeFilters));
   
-  let filterExpression;
+  let filterExpression: any[] | null;
 
   if (state.activeFilters.size === 0) {
     // No filter - show everything
@@ -44,7 +45,7 @@ export function applyMapFilters() {
 /**
  * Toggle a filter category
  */
-export function toggleFilter(category) {
+export function toggleFilter(category: string): void {
   if (!category) return; // Skip buttons without category
 
   // Update the Set
@@ -61,19 +62,20 @@ export function toggleFilter(category) {
 /**
  * Setup location filter buttons
  */
-export function setupLocationFilters() {
+export function setupLocationFilters(): void {
   document.querySelectorAll('.filter-btn').forEach((button) => {
-    button.addEventListener('click', () => {
-      const { category } = button.dataset; // UPPERCASE expected
+    const buttonElement = button as HTMLElement;
+    buttonElement.addEventListener('click', () => {
+      const category = (buttonElement.dataset as any).category as string; // UPPERCASE expected
       if (!category) return; // Skip buttons without category
 
       // Update the Set
       if (state.activeFilters.has(category)) {
         state.activeFilters.delete(category);
-        button.classList.remove('is--active'); // Explicitly remove
+        buttonElement.classList.remove('is--active'); // Explicitly remove
       } else {
         state.activeFilters.add(category);
-        button.classList.add('is--active'); // Explicitly add
+        buttonElement.classList.add('is--active'); // Explicitly add
       }
 
       // Apply the map filters
@@ -85,11 +87,12 @@ export function setupLocationFilters() {
 /**
  * Update filter button states based on active filters
  */
-export function updateFilterButtonStates() {
+export function updateFilterButtonStates(): void {
   document.querySelectorAll('.filter-btn').forEach((button) => {
-    const { category } = button.dataset;
+    const buttonElement = button as HTMLElement;
+    const category = (buttonElement.dataset as any).category as string;
     if (category) {
-      button.classList.toggle('is--active', state.activeFilters.has(category));
+      buttonElement.classList.toggle('is--active', state.activeFilters.has(category));
     }
   });
 }
@@ -97,7 +100,7 @@ export function updateFilterButtonStates() {
 /**
  * Clear all active filters
  */
-export function clearAllFilters() {
+export function clearAllFilters(): void {
   state.activeFilters.clear();
   updateFilterButtonStates();
   applyMapFilters();
@@ -106,7 +109,7 @@ export function clearAllFilters() {
 /**
  * Set specific filters
  */
-export function setFilters(categories) {
+export function setFilters(categories: string[]): void {
   state.activeFilters.clear();
   categories.forEach(category => state.activeFilters.add(category));
   updateFilterButtonStates();
@@ -114,4 +117,4 @@ export function setFilters(categories) {
 }
 
 // Make applyMapFilters available globally for localStorage module
-window.applyMapFilters = applyMapFilters;
+(window as any).applyMapFilters = applyMapFilters;

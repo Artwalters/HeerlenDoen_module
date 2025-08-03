@@ -1,10 +1,48 @@
 // Geolocation management for the Heerlen Interactive Map
 
+import type { GeolocateControl, Map, Marker, Popup } from 'mapbox-gl';
+
 import { CONFIG } from './config.js';
 import { state } from './state.js';
 
+// Global declarations for external libraries
+declare global {
+  interface Window {
+    mapboxgl: typeof import('mapbox-gl');
+    geolocationManager: GeolocationManager;
+  }
+}
+
+interface GeolocationPosition {
+  coords: {
+    longitude: number;
+    latitude: number;
+    heading?: number;
+  };
+}
+
+interface GeolocationError {
+  code: number;
+  message: string;
+}
+
 export class GeolocationManager {
-  constructor(map) {
+  private map: Map;
+  private searchRadiusId: string;
+  private searchRadiusOuterId: string;
+  private radiusInMeters: number;
+  private boundaryLayerIds: string[];
+  private distanceMarkers: Marker[];
+  public isPopupOpen: boolean;
+  private centerPoint: [number, number];
+  private boundaryRadius: number;
+  public geolocateControl?: GeolocateControl;
+  private isFirstLocation: boolean;
+  private isTracking: boolean;
+  private userInitiatedGeolocation: boolean;
+  public wasTracking?: boolean;
+
+  constructor(map: Map) {
     this.map = map;
     this.searchRadiusId = 'search-radius';
     this.searchRadiusOuterId = 'search-radius-outer';
@@ -14,6 +52,9 @@ export class GeolocationManager {
     this.isPopupOpen = false;
     this.centerPoint = CONFIG.MAP.boundary.center;
     this.boundaryRadius = CONFIG.MAP.boundary.radius;
+    this.isFirstLocation = true;
+    this.isTracking = false;
+    this.userInitiatedGeolocation = false;
     console.log('[DEBUG] GeolocationManager initialized.');
     console.log('[DEBUG] Boundary Center:', this.centerPoint);
     console.log('[DEBUG] Boundary Radius (km):', this.boundaryRadius);
@@ -23,7 +64,7 @@ export class GeolocationManager {
   /**
    * Initialize geolocation features
    */
-  initialize() {
+  private initialize(): void {
     this.setupGeolocateControl();
     this.setupSearchRadius();
     this.setupBoundaryCheck();
@@ -32,10 +73,10 @@ export class GeolocationManager {
   /**
    * Pause geolocation tracking while keeping user location visible
    */
-  pauseTracking() {
-    if (this.geolocateControl && this.geolocateControl._watchState === 'ACTIVE_LOCK') {
+  public pauseTracking(): void {
+    if (this.geolocateControl && (this.geolocateControl as any)._watchState === 'ACTIVE_LOCK') {
       this.wasTracking = true;
-      this.geolocateControl._watchState = 'ACTIVE_ERROR';
+      (this.geolocateControl as any)._watchState = 'ACTIVE_ERROR';
       console.log('Geolocation tracking paused');
     }
   }
@@ -43,9 +84,9 @@ export class GeolocationManager {
   /**
    * Resume geolocation tracking if it was paused
    */
-  resumeTracking() {
+  public resumeTracking(): void {
     if (this.geolocateControl && this.wasTracking) {
-      this.geolocateControl._watchState = 'ACTIVE_LOCK';
+      (this.geolocateControl as any)._watchState = 'ACTIVE_LOCK';
       this.wasTracking = false;
       console.log('Geolocation tracking resumed');
     }
@@ -54,7 +95,7 @@ export class GeolocationManager {
   /**
    * Create and update distance markers based on user location
    */
-  updateDistanceMarkers(userPosition) {
+  private updateDistanceMarkers(userPosition: [number, number]): void {
     // Clear existing markers
     if (this.distanceMarkers) {
       this.distanceMarkers.forEach((marker) => marker.remove());
@@ -63,7 +104,7 @@ export class GeolocationManager {
 
     // Add new markers for features within radius
     state.mapLocations.features.forEach((feature) => {
-      const featureCoords = feature.geometry.coordinates;
+      const featureCoords = feature.geometry.coordinates as [number, number];
       const distance =
         1000 *
         this.calculateDistance(
@@ -78,7 +119,7 @@ export class GeolocationManager {
         markerEl.className = 'distance-marker';
         markerEl.innerHTML = `<span class="distance-marker-distance">${Math.round(distance)}m</span>`;
 
-        const marker = new mapboxgl.Marker({ element: markerEl })
+        const marker = new window.mapboxgl.Marker({ element: markerEl })
           .setLngLat(featureCoords)
           .addTo(this.map);
 
@@ -88,7 +129,7 @@ export class GeolocationManager {
             lngLat: featureCoords,
             point: this.map.project(featureCoords),
             features: [feature],
-          });
+          } as any);
         });
 
         this.distanceMarkers.push(marker);
@@ -97,8 +138,8 @@ export class GeolocationManager {
   }
 
   // Handle user location updates
-  handleUserLocation(position) {
-    const userPosition = [position.coords.longitude, position.coords.latitude];
+  private handleUserLocation(position: GeolocationPosition): void {
+    const userPosition: [number, number] = [position.coords.longitude, position.coords.latitude];
     console.log('[DEBUG] handleUserLocation - User Position:', userPosition);
 
     if (this.isWithinBoundary(userPosition)) {
@@ -139,10 +180,14 @@ export class GeolocationManager {
       }
     } else {
       console.warn('[DEBUG] handleUserLocation - User is OUTSIDE boundary. Stopping tracking.');
-      this.geolocateControl._watchState = 'OFF';
-      if (this.geolocateControl._geolocateButton) {
-        this.geolocateControl._geolocateButton.classList.remove('mapboxgl-ctrl-geolocate-active');
-        this.geolocateControl._geolocateButton.classList.remove('mapboxgl-ctrl-geolocate-waiting');
+      (this.geolocateControl as any)._watchState = 'OFF';
+      if ((this.geolocateControl as any)._geolocateButton) {
+        (this.geolocateControl as any)._geolocateButton.classList.remove(
+          'mapboxgl-ctrl-geolocate-active'
+        );
+        (this.geolocateControl as any)._geolocateButton.classList.remove(
+          'mapboxgl-ctrl-geolocate-waiting'
+        );
       }
 
       // Clear any existing user location indicators
@@ -171,7 +216,7 @@ export class GeolocationManager {
   /**
    * Setup geolocate control with event handlers
    */
-  setupGeolocateControl() {
+  private setupGeolocateControl(): void {
     // Remove any existing controls
     document
       .querySelectorAll('.mapboxgl-ctrl-top-right .mapboxgl-ctrl-group')
@@ -181,7 +226,7 @@ export class GeolocationManager {
       .forEach((el) => el.remove());
 
     // Create geolocate control
-    this.geolocateControl = new mapboxgl.GeolocateControl({
+    this.geolocateControl = new window.mapboxgl.GeolocateControl({
       positionOptions: {
         enableHighAccuracy: true,
         maximumAge: 1000,
@@ -201,9 +246,9 @@ export class GeolocationManager {
     this.userInitiatedGeolocation = false;
 
     // Override the original _onSuccess method from the geolocate control
-    const originalOnSuccess = this.geolocateControl._onSuccess;
-    this.geolocateControl._onSuccess = (position) => {
-      const userPosition = [position.coords.longitude, position.coords.latitude];
+    const originalOnSuccess = (this.geolocateControl as any)._onSuccess;
+    (this.geolocateControl as any)._onSuccess = (position: GeolocationPosition) => {
+      const userPosition: [number, number] = [position.coords.longitude, position.coords.latitude];
       console.log('[DEBUG] _onSuccess - Position received:', userPosition);
 
       const isWithin = this.isWithinBoundary(userPosition);
@@ -221,10 +266,12 @@ export class GeolocationManager {
         );
 
         // Reset geolocate control state
-        this.geolocateControl._watchState = 'OFF';
-        if (this.geolocateControl._geolocateButton) {
-          this.geolocateControl._geolocateButton.classList.remove('mapboxgl-ctrl-geolocate-active');
-          this.geolocateControl._geolocateButton.classList.remove(
+        (this.geolocateControl as any)._watchState = 'OFF';
+        if ((this.geolocateControl as any)._geolocateButton) {
+          (this.geolocateControl as any)._geolocateButton.classList.remove(
+            'mapboxgl-ctrl-geolocate-active'
+          );
+          (this.geolocateControl as any)._geolocateButton.classList.remove(
             'mapboxgl-ctrl-geolocate-waiting'
           );
           console.log('[DEBUG] _onSuccess - Geolocate button classes removed.');
@@ -236,9 +283,9 @@ export class GeolocationManager {
         this.showBoundaryPopup();
 
         // Remove any user location marker that might have been added
-        if (this.geolocateControl._userLocationDotMarker) {
+        if ((this.geolocateControl as any)._userLocationDotMarker) {
           console.log('[DEBUG] _onSuccess - Removing user location dot marker.');
-          this.geolocateControl._userLocationDotMarker.remove();
+          (this.geolocateControl as any)._userLocationDotMarker.remove();
         }
 
         this.userInitiatedGeolocation = false;
@@ -257,7 +304,7 @@ export class GeolocationManager {
     };
 
     // Handle errors
-    this.geolocateControl.on('error', (error) => {
+    this.geolocateControl.on('error', (error: GeolocationError) => {
       console.error('[DEBUG] Geolocation error event triggered:', error);
       if (this.userInitiatedGeolocation) {
         console.warn('[DEBUG] Geolocation error occurred after user initiated the request.');
@@ -314,13 +361,13 @@ export class GeolocationManager {
 
     // Add controls to map
     this.map.addControl(this.geolocateControl, 'bottom-right');
-    this.map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+    this.map.addControl(new window.mapboxgl.NavigationControl(), 'top-right');
   }
 
   /**
    * Setup search radius visualization
    */
-  setupSearchRadius() {
+  private setupSearchRadius(): void {
     this.map.on('load', () => {
       if (this.map.getSource(this.searchRadiusId)) {
         console.log('[DEBUG] Search radius source already exists on load.');
@@ -374,7 +421,7 @@ export class GeolocationManager {
   /**
    * Setup boundary circle visualization
    */
-  setupBoundaryCheck() {
+  private setupBoundaryCheck(): void {
     this.map.on('load', () => {
       if (this.map.getSource('boundary-circle')) {
         console.log('[DEBUG] Boundary circle source already exists on load.');
@@ -418,7 +465,7 @@ export class GeolocationManager {
   /**
    * Show boundary visualization with animation
    */
-  showBoundaryLayers() {
+  private showBoundaryLayers(): void {
     console.log('[DEBUG] showBoundaryLayers called.');
     this.boundaryLayerIds.forEach((layerId) => {
       if (this.map.getLayer(layerId)) {
@@ -444,12 +491,12 @@ export class GeolocationManager {
   /**
    * Hide boundary visualization with animation
    */
-  hideBoundaryLayers() {
+  private hideBoundaryLayers(): void {
     console.log('[DEBUG] hideBoundaryLayers called.');
     this.boundaryLayerIds.forEach((layerId) => {
       if (this.map.getLayer(layerId)) {
         if (layerId === 'boundary-fill') {
-          let opacity = this.map.getPaintProperty(layerId, 'fill-opacity') || 0.03;
+          let opacity = (this.map.getPaintProperty(layerId, 'fill-opacity') as number) || 0.03;
           const animateOpacity = () => {
             if (opacity > 0) {
               opacity -= 0.005;
@@ -477,21 +524,25 @@ export class GeolocationManager {
   /**
    * Update search radius visualization around user
    */
-  updateSearchRadius(center) {
+  private updateSearchRadius(center: [number, number]): void {
     if (!this.map.getSource(this.searchRadiusId)) {
       console.warn('[DEBUG] updateSearchRadius - Source not found:', this.searchRadiusId);
       return;
     }
 
     // Create circle coordinates
-    const generateCircle = (center, radiusInM, pointCount = 64) => {
+    const generateCircle = (
+      center: [number, number],
+      radiusInM: number,
+      pointCount = 64
+    ): [number, number][] => {
       const point = {
         latitude: center[1],
         longitude: center[0],
       };
 
       const radiusKm = radiusInM / 1000;
-      const points = [];
+      const points: [number, number][] = [];
 
       // Convert km to degrees based on latitude
       const degreesLongPerKm = radiusKm / (111.32 * Math.cos((point.latitude * Math.PI) / 180));
@@ -515,8 +566,8 @@ export class GeolocationManager {
     // Update both radius layers
     [this.searchRadiusId, this.searchRadiusOuterId].forEach((sourceId) => {
       const source = this.map.getSource(sourceId);
-      if (source) {
-        source.setData({
+      if (source && 'setData' in source) {
+        (source as any).setData({
           type: 'Feature',
           geometry: {
             type: 'Polygon',
@@ -532,12 +583,12 @@ export class GeolocationManager {
   /**
    * Clear search radius visualization
    */
-  clearSearchRadius() {
+  private clearSearchRadius(): void {
     if (this.map.getSource(this.searchRadiusId)) {
       [this.searchRadiusId, this.searchRadiusOuterId].forEach((sourceId) => {
         const source = this.map.getSource(sourceId);
-        if (source) {
-          source.setData({
+        if (source && 'setData' in source) {
+          (source as any).setData({
             type: 'Feature',
             geometry: {
               type: 'Polygon',
@@ -556,25 +607,25 @@ export class GeolocationManager {
   /**
    * Handle geolocation errors
    */
-  handleGeolocationError(error) {
+  private handleGeolocationError(error: GeolocationError): void {
     console.error('[DEBUG] handleGeolocationError called with error:', error);
     console.error('Geolocation error code:', error.code);
     console.error('Geolocation error message:', error.message);
 
-    const errorMessages = {
+    const errorMessages: Record<number, string> = {
       1: 'Locatie toegang geweigerd. Schakel het in bij je instellingen.',
       2: 'Locatie niet beschikbaar. Controleer je apparaat instellingen.',
       3: 'Verzoek verlopen. Probeer opnieuw.',
-      default: 'Er is een fout opgetreden bij het ophalen van je locatie.',
     };
+    const defaultMessage = 'Er is een fout opgetreden bij het ophalen van je locatie.';
 
-    this.showNotification(errorMessages[error.code] || errorMessages.default);
+    this.showNotification(errorMessages[error.code] || defaultMessage);
   }
 
   /**
    * Show notification to user
    */
-  showNotification(message) {
+  private showNotification(message: string): void {
     console.log('[DEBUG] Displaying notification:', message);
     const notification = document.createElement('div');
     notification.className = 'geolocation-error-notification';
@@ -587,14 +638,14 @@ export class GeolocationManager {
   /**
    * Create boundary circle GeoJSON
    */
-  createBoundaryCircle() {
+  private createBoundaryCircle(): GeoJSON.Feature<GeoJSON.Polygon> {
     const center = {
       latitude: this.centerPoint[1],
       longitude: this.centerPoint[0],
     };
 
     const radiusKm = this.boundaryRadius;
-    const points = [];
+    const points: [number, number][] = [];
 
     // Convert km to degrees based on latitude
     const degreesLongPerKm = radiusKm / (111.32 * Math.cos((center.latitude * Math.PI) / 180));
@@ -621,7 +672,7 @@ export class GeolocationManager {
   /**
    * Check if position is within boundary
    */
-  isWithinBoundary(position) {
+  private isWithinBoundary(position: [number, number]): boolean {
     const distance = this.calculateDistance(
       position[1],
       position[0],
@@ -635,9 +686,9 @@ export class GeolocationManager {
   /**
    * Calculate distance between coordinates in km
    */
-  calculateDistance(lat1, lon1, lat2, lon2) {
+  private calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
     // Haversine formula
-    const toRad = (deg) => deg * (Math.PI / 180);
+    const toRad = (deg: number) => deg * (Math.PI / 180);
 
     const dLat = toRad(lat2 - lat1);
     const dLon = toRad(lon2 - lon1);
@@ -653,7 +704,7 @@ export class GeolocationManager {
   /**
    * Show boundary popup when user is outside boundary
    */
-  showBoundaryPopup() {
+  private showBoundaryPopup(): void {
     console.log('[DEBUG] showBoundaryPopup started.');
 
     // Remove existing popup if any
@@ -709,7 +760,7 @@ export class GeolocationManager {
         bearing: -17.6,
         duration: 3000,
         essential: true,
-        easing: (t) => t * (2 - t),
+        easing: (t: number) => t * (2 - t),
       });
     });
 

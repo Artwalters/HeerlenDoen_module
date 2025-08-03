@@ -1,5 +1,6 @@
 // Map interaction handlers module
 
+import type { Map } from 'mapbox-gl';
 import { CONFIG } from './config.js';
 import { state, setActivePopup } from './state.js';
 import { applyMapFilters } from './filters.js';
@@ -8,11 +9,20 @@ import { loadIcons, addMarkers } from './markers.js';
 import { setupLocationFilters } from './filters.js';
 import { closeItem } from './popups.js';
 
+// Global declaration for jQuery
+declare global {
+  interface Window {
+    $: typeof import('jquery');
+  }
+}
+
+const $ = window.$;
+
 /**
  * Setup map load event handler
- * @param {Object} map - The mapbox map instance
+ * @param map - The mapbox map instance
  */
-export function setupMapLoadHandler(map) {
+export function setupMapLoadHandler(map: Map): void {
   map.on('load', () => {
     // Wait until map is fully loaded
     map.once('idle', () => {
@@ -83,7 +93,7 @@ export function setupMapLoadHandler(map) {
         bearing: -17.6,
         duration: 6000,
         essential: true,
-        easing: (t) => t * (2 - t), // Ease out quad
+        easing: (t: number) => t * (2 - t), // Ease out quad
       });
     }, 5000);
   });
@@ -92,7 +102,7 @@ export function setupMapLoadHandler(map) {
 /**
  * Setup sidebar close button handler
  */
-export function setupSidebarHandlers() {
+export function setupSidebarHandlers(): void {
   // Close sidebar button
   $('.close-block').on('click', () => {
     closeItem();
@@ -101,12 +111,12 @@ export function setupSidebarHandlers() {
 
 /**
  * Setup map interaction handlers for hiding popups and sidebar
- * @param {Object} map - The mapbox map instance
+ * @param map - The mapbox map instance
  */
-export function setupMapInteractionHandlers(map) {
+export function setupMapInteractionHandlers(map: Map): void {
   // Hide popups and sidebar on map interactions
   ['dragstart', 'zoomstart', 'rotatestart', 'pitchstart'].forEach((eventType) => {
-    map.on(eventType, () => {
+    map.on(eventType as any, () => {
       // Hide sidebar if visible
       const visibleItem = $('.locations-map_item.is--show');
       if (visibleItem.length) {
@@ -123,13 +133,13 @@ export function setupMapInteractionHandlers(map) {
 
       // Hide popup if visible
       if (state.activePopup) {
-        const popupContent = state.activePopup.getElement().querySelector('.mapboxgl-popup-content');
+        const popupContent = state.activePopup.getElement().querySelector('.mapboxgl-popup-content') as HTMLElement;
         popupContent.style.transition = 'all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55)';
         popupContent.style.transform = 'rotate(-5deg) translateY(40px) scale(0.6)';
         popupContent.style.opacity = '0';
 
         setTimeout(() => {
-          state.activePopup.remove();
+          state.activePopup!.remove();
           setActivePopup(null);
         }, 400);
       }

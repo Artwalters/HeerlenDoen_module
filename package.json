@@ -41,6 +41,7 @@
     "@finsweet/eslint-config": "^3.0.3",
     "@finsweet/tsconfig": "^1.4.2",
     "@playwright/test": "^1.50.1",
+    "@types/mapbox-gl": "^3.4.1",
     "cross-env": "^7.0.3",
     "esbuild": "^0.24.2",
     "eslint": "^9.19.0",

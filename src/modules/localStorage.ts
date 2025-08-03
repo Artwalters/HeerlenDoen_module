@@ -3,8 +3,15 @@
 import { LOCAL_STORAGE_KEY } from './config.js';
 import { setActiveFilters, state } from './state.js';
 
+// Extend Window interface for global functions
+declare global {
+  interface Window {
+    applyMapFilters?: () => void;
+  }
+}
+
 // Save current activeFilters Set to localStorage
-export function saveMapFiltersToLocalStorage() {
+export function saveMapFiltersToLocalStorage(): void {
   try {
     const filtersArray = Array.from(state.activeFilters);
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(filtersArray));
@@ -14,11 +21,11 @@ export function saveMapFiltersToLocalStorage() {
 }
 
 // Update the Set, map filters and button UI based on categories array
-export function updateMapState(activeCategories = []) {
+export function updateMapState(activeCategories: string[] = []): void {
   setActiveFilters(new Set(activeCategories));
 
   // Update visual state of buttons
-  document.querySelectorAll('.filter-btn').forEach((button) => {
+  document.querySelectorAll<HTMLElement>('.filter-btn').forEach((button) => {
     const { category } = button.dataset;
     if (category) {
       button.classList.toggle('is--active', state.activeFilters.has(category));
@@ -32,10 +39,10 @@ export function updateMapState(activeCategories = []) {
 }
 
 // Load filters from localStorage and update the map
-export function loadFiltersAndUpdateMap() {
+export function loadFiltersAndUpdateMap(): void {
   try {
     const storedFilters = localStorage.getItem(LOCAL_STORAGE_KEY);
-    const activeCategories = storedFilters ? JSON.parse(storedFilters) : [];
+    const activeCategories: string[] = storedFilters ? JSON.parse(storedFilters) : [];
     updateMapState(activeCategories);
   } catch (e) {
     console.error('Kon filters niet laden/parsen uit localStorage voor kaart:', e);

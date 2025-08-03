@@ -1,20 +1,93 @@
 // Data loading module - loads location data from Webflow
 
+import type { Map } from 'mapbox-gl';
+import type { Feature, Point } from 'geojson';
 import { state } from './state.js';
+
+interface LocationData {
+  locationLat: number;
+  locationLong: number;
+  locationID: string;
+  name: string;
+  locationInfo: string;
+  ondernemerkleur: string;
+  descriptionv2: string;
+  icon: string | null;
+  image: string | null;
+  category: string;
+  telefoonummer: string;
+  locatie: string;
+  maps: string | null;
+  website: string | null;
+  instagram: string | null;
+  facebook: string | null;
+}
+
+interface ARData {
+  latitude_ar: number;
+  longitude_ar: number;
+  name_ar: string;
+  slug_ar: string;
+  image_ar: string | null;
+  description_ar: string;
+  arkleur: string;
+  icon_ar: string | null;
+  instructie: string;
+  link_ar_mobile: string | null;
+  link_ar_desktop: string | null;
+  category: string | null;
+}
+
+interface LocationFeature extends Feature<Point> {
+  properties: {
+    id: string;
+    description: string;
+    arrayID: number;
+    color: string;
+    name: string;
+    icon?: string | null;
+    image?: string | null;
+    category: string;
+    telefoonummer?: string;
+    locatie?: string;
+    maps?: string | null;
+    website?: string | null;
+    descriptionv2?: string;
+    instagram?: string | null;
+    facebook?: string | null;
+  };
+}
+
+interface ARFeature extends Feature<Point> {
+  properties: {
+    type: 'ar';
+    name: string;
+    slug: string;
+    description: string;
+    arrayID: number;
+    image?: string | null;
+    arkleur: string;
+    icon?: string | null;
+    instructie: string;
+    link_ar_mobile?: string | null;
+    link_ar_desktop?: string | null;
+    category?: string | null;
+  };
+}
 
 /**
  * Helper function to safely get a value from an element within a parent.
  * Logs warnings if elements or properties are missing.
  */
 function getRobustValue(
-  parentElement,
-  selector,
-  property = 'value',
-  defaultValue = null,
-  isRequired = false,
-  itemIndex = -1,
-  itemType = 'item'
-) {
+  parentElement: Element | null,
+  selector: string,
+  property: string = 'value',
+  defaultValue: any = null,
+  isRequired: boolean = false,
+  itemIndex: number = -1,
+  itemType: string = 'item'
+): any {
   if (!parentElement) {
     console.warn(`[getRobustValue] Invalid parentElement provided for selector '${selector}'`);
     return defaultValue;
@@ -25,7 +98,7 @@ function getRobustValue(
   if (targetElement) {
     // Check if the specific property exists (e.g., 'value' for input, 'innerHTML' for div)
     if (property in targetElement) {
-      return targetElement[property];
+      return (targetElement as any)[property];
     }
     // Log if the property doesn't exist on the found element
     console.warn(
@@ -47,7 +120,7 @@ function getRobustValue(
  * Load location data from CMS DOM elements robustly.
  * Skips items with invalid coordinates.
  */
-export function getGeoData() {
+export function getGeoData(): void {
   console.log('[Data Loading] Starting getGeoData...');
   const locationList = document.getElementById('location-list');
   let loadedCount = 0;
@@ -62,7 +135,7 @@ export function getGeoData() {
 
   // Filter out non-element nodes (like text nodes, comments)
   Array.from(locationList.childNodes)
-    .filter((node) => node.nodeType === Node.ELEMENT_NODE)
+    .filter((node): node is Element => node.nodeType === Node.ELEMENT_NODE)
     .forEach((element, index) => {
       // --- Get Essential Data First ---
       const rawLat = getRobustValue(
@@ -106,7 +179,7 @@ export function getGeoData() {
       }
 
       // --- Get Optional/Other Data Safely ---
-      const locationData = {
+      const locationData: LocationData = {
         // Essential (already validated)
         locationLat: locationLat,
         locationLong: locationLong,
@@ -160,7 +233,7 @@ export function getGeoData() {
       };
 
       // --- Create Feature ---
-      const feature = {
+      const feature: LocationFeature = {
         type: 'Feature',
         geometry: {
           type: 'Point',
@@ -208,7 +281,7 @@ export function getGeoData() {
  * Load AR location data from CMS DOM elements robustly.
  * Skips items with invalid coordinates.
  */
-export function getARData() {
+export function getARData(): void {
   console.log('[Data Loading] Starting getARData...');
   const arLocationList = document.getElementById('location-ar-list');
   let loadedCount = 0;
@@ -224,7 +297,7 @@ export function getARData() {
 
   // Filter out non-element nodes
   Array.from(arLocationList.childNodes)
-    .filter((node) => node.nodeType === Node.ELEMENT_NODE)
+    .filter((node): node is Element => node.nodeType === Node.ELEMENT_NODE)
     .forEach((element, index) => {
       const itemIndexForLog = index; // Use original index for logging
 
@@ -270,7 +343,7 @@ export function getARData() {
       }
 
       // --- Get Optional/Other Data Safely ---
-      const arData = {
+      const arData: ARData = {
         // Essential (already validated)
         latitude_ar: latitude_ar,
         longitude_ar: longitude_ar,
@@ -330,7 +403,7 @@ export function getARData() {
       }
 
       // --- Create Feature ---
-      const feature = {
+      const feature: ARFeature = {
         type: 'Feature',
         geometry: {
           type: 'Point',
@@ -366,7 +439,7 @@ export function getARData() {
 /**
  * Main function to load all location data
  */
-export async function loadLocationData() {
+export async function loadLocationData(): Promise<typeof state.mapLocations> {
   console.log('[Data Loading] Starting location data loading...');
 
   // Reset mapLocations in case this script runs multiple times
@@ -385,11 +458,14 @@ export async function loadLocationData() {
 /**
  * Update map source with loaded data
  */
-export function updateMapSource(map) {
+export function updateMapSource(map: Map): void {
   // Optional: After loading, update the map source if it exists
   if (map.getSource('locations')) {
-    map.getSource('locations').setData(state.mapLocations);
-    console.log("[Data Loading] Map source 'locations' updated.");
+    const source = map.getSource('locations');
+    if (source && 'setData' in source) {
+      (source as any).setData(state.mapLocations);
+      console.log("[Data Loading] Map source 'locations' updated.");
+    }
   } else {
     console.log("[Data Loading] Map source 'locations' not found yet, will be added later.");
   }

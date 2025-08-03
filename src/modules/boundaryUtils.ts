@@ -1,18 +1,26 @@
 // Boundary utilities and teleport functionality
 
+import type { Map } from 'mapbox-gl';
 import { CONFIG } from './config.js';
+
+// Extend global interface for gsap
+declare global {
+  const gsap: {
+    to: (target: any, options: any) => void;
+  };
+}
 
 /**
  * Calculate distance between two points using Haversine formula
- * @param {number} lat1 - Latitude of first point
- * @param {number} lon1 - Longitude of first point
- * @param {number} lat2 - Latitude of second point
- * @param {number} lon2 - Longitude of second point
- * @return {number} Distance in kilometers
+ * @param lat1 - Latitude of first point
+ * @param lon1 - Longitude of first point
+ * @param lat2 - Latitude of second point
+ * @param lon2 - Longitude of second point
+ * @return Distance in kilometers
  */
-export function calculateDistance(lat1, lon1, lat2, lon2) {
+export function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   // Haversine formula
-  const toRad = (deg) => deg * (Math.PI / 180);
+  const toRad = (deg: number): number => deg * (Math.PI / 180);
 
   const dLat = toRad(lat2 - lat1);
   const dLon = toRad(lon2 - lon1);
@@ -27,9 +35,9 @@ export function calculateDistance(lat1, lon1, lat2, lon2) {
 
 /**
  * Setup boundary checking for map movement
- * @param {Object} map - The mapbox map instance
+ * @param map - The mapbox map instance
  */
-export function setupBoundaryCheck(map) {
+export function setupBoundaryCheck(map: Map): void {
   map.on('moveend', () => {
     // Skip this check if we're flying back
     if (map.isEasing()) return;

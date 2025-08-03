@@ -1,7 +1,9 @@
 // POI filter and interaction module
 
+import type { Map } from 'mapbox-gl';
+
 // Filter out unwanted POI labels
-const excludedNames = [
+const excludedNames: string[] = [
   'Brasserie Mijn Streek',
   'De Twee Gezusters',
   'SCHUNCK Bibliotheek Heerlen Glaspaleis',
@@ -27,16 +29,16 @@ const excludedNames = [
 
 /**
  * Setup POI filtering to hide unwanted labels
- * @param {Object} map - The mapbox map instance
+ * @param {Map} map - The mapbox map instance
  */
-export function setupPOIFiltering(map) {
+export function setupPOIFiltering(map: Map): void {
   // Build comprehensive filter
   map.on('idle', () => {
     // Check if the map is fully loaded
     if (!map.loaded()) return;
 
     // Create a filter that checks BOTH properties
-    let filter = ['all'];
+    let filter: any[] = ['all'];
 
     // For each name, make a NOT-condition that checks both properties
     // If either matches, the POI should be hidden
@@ -54,7 +56,7 @@ export function setupPOIFiltering(map) {
     filter.push(['has', 'name']);
 
     // Apply the filter to all POI layers
-    const poiLayers = [
+    const poiLayers: string[] = [
       'poi-label',
       'poi-scalerank1',
       'poi-scalerank2',

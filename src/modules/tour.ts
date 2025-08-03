@@ -1,12 +1,47 @@
 // Tour/walkthrough module
 
+import type { Map } from 'mapbox-gl';
+import { CONFIG } from './config.js';
+
+// Global declarations for external libraries
+declare global {
+  interface Window {
+    mapboxgl: typeof import('mapbox-gl');
+    Shepherd: any;
+    activeTour?: any;
+    tourWaitingForMarkerClick?: boolean;
+    markerClickFallbackTimer?: number;
+    markerClickListener?: () => void;
+  }
+}
+
+interface TourStep {
+  id: string;
+  attachTo?: {
+    element: Element;
+    on: string;
+  } | null;
+  text: string;
+  buttons?: Array<{
+    text: string;
+    action: () => void;
+    classes: string;
+  }>;
+  when?: {
+    show?: () => void;
+    hide?: () => void;
+  };
+  canClickTarget?: boolean;
+  advanceOn?: null;
+}
+
 /**
  * Initialize tour functionality
- * @param {Object} map - The mapbox map instance
+ * @param map - The mapbox map instance
  */
-export function initializeTour(map) {
+export function initializeTour(map: Map): void {
   // Check if mapboxgl is available
-  if (typeof mapboxgl !== 'undefined') {
+  if (typeof window.mapboxgl !== 'undefined') {
     // Load external CSS file
     loadTourStylesheet();
 
@@ -29,7 +64,7 @@ export function initializeTour(map) {
 /**
  * Load the external CSS file for tour styles
  */
-function loadTourStylesheet() {
+function loadTourStylesheet(): void {
   if (!document.getElementById('tour-styles')) {
     const linkElem = document.createElement('link');
     linkElem.id = 'tour-styles';
@@ -42,9 +77,9 @@ function loadTourStylesheet() {
 
 /**
  * Setup the tour system
- * @param {Object} map - The mapbox map instance
+ * @param map - The mapbox map instance
  */
-function setupTourSystem(map) {
+function setupTourSystem(map: Map): void {
   // Check if guide was already shown
   const walkthroughShown = localStorage.getItem('heerlenMapWalkthroughShown');
 
@@ -63,9 +98,9 @@ function setupTourSystem(map) {
 
 /**
  * Add welcome message overlay with animation
- * @param {Function} callback - Callback function to execute after welcome
+ * @param callback - Callback function to execute after welcome
  */
-function showWelcomeMessage(callback) {
+function showWelcomeMessage(callback: () => void): void {
   const overlay = document.createElement('div');
   overlay.className = 'welcome-overlay';
   overlay.innerHTML = `
@@ -82,13 +117,13 @@ function showWelcomeMessage(callback) {
   // Animate entrance
   setTimeout(() => {
     overlay.style.opacity = '1';
-    const card = overlay.querySelector('.welcome-card');
+    const card = overlay.querySelector('.welcome-card') as HTMLElement;
     card.style.transform = 'translateY(0)';
     card.style.opacity = '1';
   }, 100);
 
   // Handle button clicks
-  overlay.querySelector('.welcome-start-btn').addEventListener('click', function () {
+  overlay.querySelector('.welcome-start-btn')!.addEventListener('click', function () {
     overlay.style.opacity = '0';
     setTimeout(() => {
       overlay.remove();
@@ -96,7 +131,7 @@ function showWelcomeMessage(callback) {
     }, 500);
   });
 
-  overlay.querySelector('.welcome-skip-btn').addEventListener('click', function () {
+  overlay.querySelector('.welcome-skip-btn')!.addEventListener('click', function () {
     overlay.style.opacity = '0';
     setTimeout(() => {
       overlay.remove();
@@ -106,9 +141,9 @@ function showWelcomeMessage(callback) {
 
 /**
  * Add help button to trigger tour manually
- * @param {Object} map - The mapbox map instance
+ * @param map - The mapbox map instance
  */
-function addHelpButton(map) {
+function addHelpButton(map: Map): void {
   // Remove existing help button if any
   const existingButton = document.querySelector('.help-button');
   if (existingButton) {
@@ -148,11 +183,11 @@ function addHelpButton(map) {
 
 /**
  * Main tour function
- * @param {Object} map - The mapbox map instance
+ * @param map - The mapbox map instance
  */
-export function startTour(map) {
+export function startTour(map: Map): void {
   // Create tour with enhanced options
-  const tour = new Shepherd.Tour({
+  const tour = new window.Shepherd.Tour({
     useModalOverlay: false,
     defaultStepOptions: {
       cancelIcon: {
@@ -185,8 +220,8 @@ export function startTour(map) {
   window.activeTour = tour;
 
   // Function to enable modal overlay with enhanced animation
-  function enableOverlay() {
-    const overlay = document.querySelector('.shepherd-modal-overlay-container');
+  function enableOverlay(): void {
+    const overlay = document.querySelector('.shepherd-modal-overlay-container') as HTMLElement;
     if (overlay) {
       overlay.style.transition = 'opacity 0.3s ease';
       overlay.classList.add('shepherd-modal-is-visible');
@@ -195,8 +230,8 @@ export function startTour(map) {
   }
 
   // Function to disable modal overlay
-  function disableOverlay() {
-    const overlay = document.querySelector('.shepherd-modal-overlay-container');
+  function disableOverlay(): void {
+    const overlay = document.querySelector('.shepherd-modal-overlay-container') as HTMLElement;
     if (overlay) {
       overlay.classList.remove('shepherd-modal-is-visible');
       overlay.style.pointerEvents = 'none';
@@ -204,7 +239,7 @@ export function startTour(map) {
   }
 
   // Enhanced element targeting function that handles cases where elements don't exist
-  function safelyGetElement(selector, fallbackSelector) {
+  function safelyGetElement(selector: string, fallbackSelector?: string): { element: Element; on: string } | null {
     const element = document.querySelector(selector);
     if (element) {
       return { element, on: 'bottom' };
@@ -236,7 +271,11 @@ export function startTour(map) {
   });
 
   // Steps with proper element targeting and fallbacks - minimalist style without titles
-  const tourSteps = [
+  const tourSteps: Array<{
+    id: string;
+    attachTo: { element: Element; on: string } | null;
+    text: string;
+  }> = [
     {
       id: 'map-controls',
       attachTo: safelyGetElement('.mapboxgl-ctrl-top-right', '.mapboxgl-ctrl-group'),
@@ -339,7 +378,7 @@ export function startTour(map) {
         window.tourWaitingForMarkerClick = true;
 
         // Create a fallback to next step in case the user can't find a marker to click
-        window.markerClickFallbackTimer = setTimeout(() => {
+        window.markerClickFallbackTimer = window.setTimeout(() => {
           if (window.tourWaitingForMarkerClick) {
             // If user hasn't clicked after 15 seconds, show hint message
             const hintMessage = document.createElement('div');
@@ -405,7 +444,7 @@ export function startTour(map) {
           const marker = document.querySelector('.mapboxgl-marker, .mapboxgl-user-location-dot');
           if (marker) {
             // Try to simulate a click on this marker
-            marker.click();
+            (marker as HTMLElement).click();
 
             // If that didn't work, try plan B:
             setTimeout(() => {
@@ -419,9 +458,9 @@ export function startTour(map) {
                   const feature = features[0];
                   map.fire('click', {
                     lngLat: feature.geometry.coordinates,
-                    point: map.project(feature.geometry.coordinates),
+                    point: map.project(feature.geometry.coordinates as [number, number]),
                     features: [feature],
-                  });
+                  } as any);
                 }
               }
             }, 300);
@@ -485,7 +524,7 @@ export function startTour(map) {
   });
 
   // Setup marker click listener to advance tour if needed
-  function setupMarkerClickListener() {
+  function setupMarkerClickListener(): void {
     // Remove previous listener if it exists
     if (window.markerClickListener) {
       map.off('click', 'location-markers', window.markerClickListener);
@@ -495,7 +534,7 @@ export function startTour(map) {
     window.markerClickListener = () => {
       if (window.tourWaitingForMarkerClick) {
         window.tourWaitingForMarkerClick = false;
-        clearTimeout(window.markerClickFallbackTimer);
+        clearTimeout(window.markerClickFallbackTimer!);
 
         // Give time for popup to appear
         setTimeout(() => {
@@ -515,7 +554,7 @@ export function startTour(map) {
   setupMarkerClickListener();
 
   // Clean up when tour completes or is cancelled
-  function cleanupTour() {
+  function cleanupTour(): void {
     window.tourWaitingForMarkerClick = false;
     if (window.markerClickFallbackTimer) {
       clearTimeout(window.markerClickFallbackTimer);
@@ -543,9 +582,9 @@ export function startTour(map) {
 
 /**
  * Add progress bar to show tour progress
- * @param {Object} tour - The tour instance
+ * @param tour - The tour instance
  */
-function addProgressBar(tour) {
+function addProgressBar(tour: any): void {
   // Remove existing progress bar if any
   const existingBar = document.querySelector('.shepherd-progress-bar');
   if (existingBar) {
@@ -581,7 +620,7 @@ function addProgressBar(tour) {
   document.body.appendChild(progressContainer);
 
   // Update progress bar when step changes - minimalist with no text
-  function updateProgress() {
+  function updateProgress(): void {
     const currentStep = tour.getCurrentStep();
     if (!currentStep) return;
 
@@ -590,7 +629,7 @@ function addProgressBar(tour) {
     // Small adjustment for better progression: start at 0% for the first step
     const progress = totalSteps > 1 ? Math.round((stepIndex / (totalSteps - 1)) * 100) : 100;
 
-    const fill = progressContainer.querySelector('.progress-fill');
+    const fill = progressContainer.querySelector('.progress-fill') as HTMLElement;
     // Make sure fill exists before adjusting style
     if (fill) {
       fill.style.width = `${progress}%`;
@@ -604,7 +643,7 @@ function addProgressBar(tour) {
   updateProgress();
 }
 
-export function endTour() {
+export function endTour(): void {
   console.log('Ending tour...');
   localStorage.setItem('heerlen-tour-completed', 'true');
 }

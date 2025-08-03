@@ -1,26 +1,44 @@
 // Marker management module
 
+import type { Map } from 'mapbox-gl';
+import type { Feature, Point } from 'geojson';
 import { state } from './state.js';
 import { CONFIG } from './config.js';
+
+interface LocationFeature extends Feature<Point> {
+  properties: {
+    icon?: string;
+    color: string;
+    name: string;
+    [key: string]: any;
+  };
+}
 
 /**
  * Load marker icons
  */
-export function loadIcons(map) {
+export function loadIcons(map: Map): void {
   // Get unique icons from features
   const uniqueIcons = [...new Set(state.mapLocations.features
     .map((feature) => feature.properties.icon)
-    .filter((icon) => icon) // Filter out null/undefined icons
+    .filter((icon): icon is string => !!icon) // Filter out null/undefined icons and type guard
   )];
 
   // Load each icon
   uniqueIcons.forEach((iconUrl) => {
+    // Check if image already exists
+    if (map.hasImage(iconUrl)) {
+      return;
+    }
+    
     map.loadImage(iconUrl, (error, image) => {
       if (error) {
         console.warn('Failed to load icon:', iconUrl, error);
         return;
       }
-      map.addImage(iconUrl, image);
+      if (image && !map.hasImage(iconUrl)) {
+        map.addImage(iconUrl, image);
+      }
     });
   });
 }
@@ -28,7 +46,7 @@ export function loadIcons(map) {
 /**
  * Add custom markers to map
  */
-export function addMarkers(map) {
+export function addMarkers(map: Map): void {
   if (state.markersAdded) return;
 
   console.log('Adding markers to map...');
@@ -47,7 +65,7 @@ export function addMarkers(map) {
     // Circle marker layer
     {
       id: 'location-markers',
-      type: 'circle',
+      type: 'circle' as const,
       paint: {
         'circle-color': [
           'case',
@@ -76,7 +94,7 @@ export function addMarkers(map) {
     // Icon layer
     {
       id: 'location-icons',
-      type: 'symbol',
+      type: 'symbol' as const,
       layout: {
         'icon-image': ['get', 'icon'],
         'icon-size': [
@@ -93,7 +111,7 @@ export function addMarkers(map) {
           0.15,
         ],
         'icon-allow-overlap': true,
-        'icon-anchor': 'center',
+        'icon-anchor': 'center' as const,
       },
       paint: {
         'icon-opacity': 0,
@@ -102,7 +120,7 @@ export function addMarkers(map) {
     // Label layer
     {
       id: 'location-labels',
-      type: 'symbol',
+      type: 'symbol' as const,
       layout: {
         'text-field': ['get', 'name'],
         'text-size': [
@@ -118,8 +136,8 @@ export function addMarkers(map) {
           CONFIG.MARKER_ZOOM.large,
           12,
         ],
-        'text-offset': [0, 1],
-        'text-anchor': 'top',
+        'text-offset': [0, 1] as [number, number],
+        'text-anchor': 'top' as const,
         'text-allow-overlap': false,
       },
       paint: {
@@ -146,20 +164,23 @@ export function addMarkers(map) {
 /**
  * Animate marker appearance
  */
-function animateMarkerAppearance(map) {
+function animateMarkerAppearance(map: Map): void {
   let opacity = 0;
-  const animateMarkers = () => {
+  const animateMarkers = (): void => {
     opacity += 0.1;
+    
+    // Clamp opacity to maximum of 1.0
+    const clampedOpacity = Math.min(opacity, 1.0);
     
     // Check if layers still exist before setting paint properties
     if (map.getLayer('location-markers')) {
-      map.setPaintProperty('location-markers', 'circle-opacity', opacity);
+      map.setPaintProperty('location-markers', 'circle-opacity', clampedOpacity);
     }
     if (map.getLayer('location-icons')) {
-      map.setPaintProperty('location-icons', 'icon-opacity', opacity);
+      map.setPaintProperty('location-icons', 'icon-opacity', clampedOpacity);
     }
     if (map.getLayer('location-labels')) {
-      map.setPaintProperty('location-labels', 'text-opacity', opacity);
+      map.setPaintProperty('location-labels', 'text-opacity', clampedOpacity);
     }
 
     if (opacity < 1) {
@@ -173,7 +194,7 @@ function animateMarkerAppearance(map) {
 /**
  * Setup marker hover effects
  */
-function setupMarkerInteractions(map) {
+function setupMarkerInteractions(map: Map): void {
   map.on('mouseenter', 'location-markers', () => {
     map.getCanvas().style.cursor = 'pointer';
   });
@@ -186,7 +207,7 @@ function setupMarkerInteractions(map) {
 /**
  * Update marker visibility based on zoom level
  */
-export function updateMarkerVisibility(map, zoom) {
+export function updateMarkerVisibility(map: Map, zoom: number): void {
   console.log('Updating marker visibility for zoom:', zoom);
   
   // You can add zoom-based visibility logic here if needed
@@ -196,7 +217,7 @@ export function updateMarkerVisibility(map, zoom) {
 /**
  * Create custom marker element
  */
-export function createCustomMarker(location) {
+export function createCustomMarker(location: LocationFeature): HTMLDivElement {
   const markerEl = document.createElement('div');
   markerEl.className = 'custom-marker';
   
@@ -211,9 +232,10 @@ export function createCustomMarker(location) {
 /**
  * Update markers data source
  */
-export function updateMarkersData(map) {
-  if (map.getSource('locations')) {
-    map.getSource('locations').setData(state.mapLocations);
+export function updateMarkersData(map: Map): void {
+  const source = map.getSource('locations');
+  if (source && 'setData' in source) {
+    (source as any).setData(state.mapLocations);
     console.log('Markers data updated');
   }
 }

@@ -1,6 +1,29 @@
 // Configuration and constants for the Heerlen Interactive Map
 
-export const CONFIG = {
+import type { MapboxOptions } from 'mapbox-gl';
+
+interface MapConfig {
+  center: [number, number];
+  zoom: number;
+  pitch: number;
+  bearing: number;
+  boundary: {
+    center: [number, number];
+    radius: number;
+  };
+}
+
+interface MarkerZoomConfig {
+  min: number;
+  small: number;
+  medium: number;
+  large: number;
+}
+
+export const CONFIG: {
+  MAP: MapConfig;
+  MARKER_ZOOM: MarkerZoomConfig;
+} = {
   MAP: {
     center: [5.979642, 50.887634],
     zoom: 15.5,
@@ -20,17 +43,17 @@ export const CONFIG = {
 };
 
 // Mapbox access token
-export const MAPBOX_ACCESS_TOKEN =
+export const MAPBOX_ACCESS_TOKEN: string =
   'pk.eyJ1IjoicHJvamVjdGhlZXJsZW4iLCJhIjoiY2x4eWVmcXBvMWozZTJpc2FqbWgzcnAyeCJ9.SVOVbBG6o1lHs6TwCudR9g';
 
 // Map style
-export const MAP_STYLE = 'mapbox://styles/projectheerlen/cm9lkc2ge005301qs86xncirv';
+export const MAP_STYLE: string = 'mapbox://styles/projectheerlen/cm9lkc2ge005301qs86xncirv';
 
 // Local storage key
-export const LOCAL_STORAGE_KEY = 'heerlenActiveFilters';
+export const LOCAL_STORAGE_KEY: string = 'heerlenActiveFilters';
 
 // Map options
-export const MAP_OPTIONS = {
+export const MAP_OPTIONS: MapboxOptions = {
   container: 'map',
   style: MAP_STYLE,
   center: CONFIG.MAP.center,

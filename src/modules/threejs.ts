@@ -1,7 +1,48 @@
 // THREE.js layer module for 3D models and image planes
 
+import type { Map } from 'mapbox-gl';
+
+// Global declarations for THREE.js
+declare global {
+  interface Window {
+    THREE: typeof import('three');
+    mapboxgl: typeof import('mapbox-gl');
+  }
+}
+
+// Use THREE from global window
+const THREE = window.THREE;
+const mapboxgl = window.mapboxgl;
+
+interface ModelConfig {
+  id: string;
+  origin: [number, number]; // [lat, lng]
+  altitude: number;
+  rotate: [number, number, number];
+  url: string;
+  scale: number;
+}
+
+interface ImagePlaneConfig {
+  id: string;
+  origin: [number, number];
+  altitude: number;
+  rotate: [number, number, number];
+  imageUrl: string;
+  width: number;
+  height: number;
+}
+
+interface Transform {
+  translateX: number;
+  translateY: number;
+  translateZ: number;
+  rotate: [number, number, number];
+  scale: number;
+}
+
 // 3D model configurations
-const modelConfigs = [
+const modelConfigs: ModelConfig[] = [
   {
     id: 'schunck',
     origin: [50.88778235149691, 5.979389928151281], // [lat, lng]
@@ -21,7 +62,7 @@ const modelConfigs = [
 ];
 
 // Image plane configuration
-const imagePlaneConfig = {
+const imagePlaneConfig: ImagePlaneConfig = {
   id: 'image1',
   origin: [50.88801513786042, 5.980644311376565],
   altitude: 6.5,
@@ -34,10 +75,10 @@ const imagePlaneConfig = {
 
 /**
  * Create image plane for THREE.js
- * @param {Object} config - Image plane configuration
- * @return {Promise} Promise that resolves to the image plane mesh
+ * @param config - Image plane configuration
+ * @return Promise that resolves to the image plane mesh
  */
-function createImagePlane(config) {
+function createImagePlane(config: ImagePlaneConfig): Promise<THREE.Mesh> {
   // Convert coordinates
   const mercatorCoord = mapboxgl.MercatorCoordinate.fromLngLat(
     [config.origin[1], config.origin[0]],
@@ -72,7 +113,7 @@ function createImagePlane(config) {
           translateZ: mercatorCoord.z,
           rotate: config.rotate,
           scale: 1,
-        };
+        } as Transform;
 
         resolve(plane);
       },
@@ -82,17 +123,29 @@ function createImagePlane(config) {
   });
 }
 
+interface CustomLayer {
+  id: string;
+  type: 'custom';
+  renderingMode: '3d';
+  map?: Map;
+  scene?: THREE.Scene;
+  camera?: THREE.Camera;
+  renderer?: THREE.WebGLRenderer;
+  onAdd: (map: Map, gl: WebGLRenderingContext) => void;
+  render: (gl: WebGLRenderingContext, matrix: number[]) => void;
+}
+
 /**
  * Create custom THREE.js layer
- * @return {Object} Custom layer object for Mapbox
+ * @return Custom layer object for Mapbox
  */
-export function createThreeJSLayer() {
+export function createThreeJSLayer(): CustomLayer {
   return {
     id: '3d-models',
     type: 'custom',
     renderingMode: '3d',
 
-    onAdd: function (map, gl) {
+    onAdd: function (map: Map, gl: WebGLRenderingContext) {
       this.map = map;
       this.scene = new THREE.Scene();
       this.camera = new THREE.Camera();
@@ -125,7 +178,7 @@ export function createThreeJSLayer() {
       this.renderer.autoClear = false;
 
       // Load 3D models
-      const loader = new THREE.GLTFLoader();
+      const loader = new (THREE as any).GLTFLoader();
       modelConfigs.forEach((config) => {
         // Convert coordinates
         const mercCoord = mapboxgl.MercatorCoordinate.fromLngLat(
@@ -136,7 +189,7 @@ export function createThreeJSLayer() {
         // Load model
         loader.load(
           config.url,
-          (gltf) => {
+          (gltf: any) => {
             const scene3D = gltf.scene;
 
             // Store transform data
@@ -146,31 +199,31 @@ export function createThreeJSLayer() {
               translateZ: mercCoord.z,
               rotate: config.rotate,
               scale: mercCoord.meterInMercatorCoordinateUnits() * config.scale,
-            };
+            } as Transform;
 
-            this.scene.add(scene3D);
+            this.scene!.add(scene3D);
           },
           undefined,
-          (err) => console.error(err)
+          (err: any) => console.error(err)
         );
       });
 
       // Load image plane
       createImagePlane(imagePlaneConfig)
         .then((plane) => {
-          this.scene.add(plane);
+          this.scene!.add(plane);
         })
         .catch((err) => console.error('Error loading image plane:', err));
     },
 
-    render: function (gl, matrix) {
+    render: function (gl: WebGLRenderingContext, matrix: number[]) {
       // Get Mapbox matrix
       const mapMatrix = new THREE.Matrix4().fromArray(matrix);
 
       // Apply transforms to each object
-      this.scene.traverse((child) => {
+      this.scene!.traverse((child) => {
         if (child.userData.transform) {
-          const t = child.userData.transform;
+          const t = child.userData.transform as Transform;
 
           // Create transform matrices
           const translation = new THREE.Matrix4().makeTranslation(
@@ -198,17 +251,17 @@ export function createThreeJSLayer() {
       });
 
       // Render scene
-      this.renderer.resetState();
-      this.renderer.render(this.scene, this.camera);
+      this.renderer!.resetState();
+      this.renderer!.render(this.scene!, this.camera!);
     },
   };
 }
 
 /**
  * Setup THREE.js layer on map
- * @param {Object} map - The mapbox map instance
+ * @param map - The mapbox map instance
  */
-export function setupThreeJSLayer(map) {
+export function setupThreeJSLayer(map: Map): void {
   // Add THREE.js layer when map style is loaded
   map.on('style.load', () => {
     const customLayer = createThreeJSLayer();
