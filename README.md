@@ -4,8 +4,8 @@ Een volledig gemodulariseerde interactieve kaart applicatie voor Heerlen, gebouw
 
 ## 🚀 Live Demo
 
-**Production URL:** `https://artwalters.github.io/HeerlenDoen_module/app.js`  
-**CSS URL:** `https://artwalters.github.io/HeerlenDoen_module/app.css`
+**Production URL:** `https://artwalters.github.io/HeerlenDoen_module/public/app.js`  
+**CSS URL:** `https://artwalters.github.io/HeerlenDoen_module/public/app.css`
 
 ## 📦 Webflow Integratie
 
@@ -13,14 +13,14 @@ Een volledig gemodulariseerde interactieve kaart applicatie voor Heerlen, gebouw
 In je Webflow project **Site Settings** → **Custom Code** → **Head Code**:
 
 ```html
-<link rel="stylesheet" href="https://artwalters.github.io/HeerlenDoen_module/app.css">
+<link rel="stylesheet" href="https://artwalters.github.io/HeerlenDoen_module/public/app.css">
 ```
 
 ### Stap 2: JavaScript Toevoegen  
 In **Footer Code** (voor de `</body>` tag):
 
 ```html
-<script src="https://artwalters.github.io/HeerlenDoen_module/app.js"></script>
+<script src="https://artwalters.github.io/HeerlenDoen_module/public/app.js"></script>
 ```
 
 ### Stap 3: Mapbox Token Instellen
@@ -95,8 +95,8 @@ pnpm run build
 
 Na elke push naar main zijn de files beschikbaar via:
 
-- **JavaScript:** `https://artwalters.github.io/HeerlenDoen_module/app.js`
-- **CSS:** `https://artwalters.github.io/HeerlenDoen_module/app.css`
+- **JavaScript:** `https://artwalters.github.io/HeerlenDoen_module/public/app.js`
+- **CSS:** `https://artwalters.github.io/HeerlenDoen_module/public/app.css`
 
 ## 📋 Webflow CMS Vereisten
 
