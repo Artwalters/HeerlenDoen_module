@@ -142,4 +142,50 @@ export function setupMapInteractionHandlers(map: Map): void {
       }
     });
   });
+
+  // Close popup when clicking on the map (outside popup and markers)
+  map.on('click', (e) => {
+    // Check if click was on a marker or popup
+    const features = map.queryRenderedFeatures(e.point, {
+      layers: ['location-markers']
+    });
+    
+    // Only close popup if we didn't click on a marker and popup exists
+    if (features.length === 0 && state.activePopup) {
+      // Check if the click was inside the popup element
+      const popupElement = state.activePopup.getElement();
+      const clickTarget = e.originalEvent.target as HTMLElement;
+      
+      // If click was not inside the popup, close it
+      if (!popupElement.contains(clickTarget)) {
+        const popupContent = popupElement.querySelector('.mapboxgl-popup-content') as HTMLElement;
+        if (popupContent) {
+          popupContent.style.transition = 'all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55)';
+          popupContent.style.transform = 'rotate(-5deg) translateY(40px) scale(0.6)';
+          popupContent.style.opacity = '0';
+        }
+
+        setTimeout(() => {
+          if (state.activePopup) {
+            state.activePopup.remove();
+            setActivePopup(null);
+          }
+        }, 400);
+
+        // Also hide sidebar if visible
+        const visibleItem = $('.locations-map_item.is--show');
+        if (visibleItem.length) {
+          visibleItem.css({
+            opacity: '0',
+            transform: 'translateY(40px) scale(0.6)',
+            transition: 'all 400ms cubic-bezier(0.68, -0.55, 0.265, 1.55)',
+          });
+
+          setTimeout(() => {
+            visibleItem.removeClass('is--show');
+          }, 400);
+        }
+      }
+    }
+  });
 }

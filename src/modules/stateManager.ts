@@ -19,11 +19,6 @@ interface AppState {
   
   // Filter state
   activeFilters: Set<string>;
-  
-  // Performance state
-  performanceMode: 'auto' | 'high' | 'low';
-  frameRate: number;
-  memoryUsage: number;
 }
 
 /**
@@ -46,9 +41,6 @@ class StateManager {
         features: [],
       },
       activeFilters: new Set(),
-      performanceMode: 'auto',
-      frameRate: 60,
-      memoryUsage: 0,
     };
   }
 
@@ -169,24 +161,6 @@ class StateManager {
     this.setState({ activeFilters: new Set() });
   }
 
-  setPerformanceMode(mode: 'auto' | 'high' | 'low'): void {
-    this.setState({ performanceMode: mode });
-    eventBus.emit(Events.PERFORMANCE_WARNING, { mode });
-  }
-
-  updatePerformanceMetrics(frameRate: number, memoryUsage: number): void {
-    this.setState({ frameRate, memoryUsage });
-    
-    // Auto-adjust performance mode based on metrics
-    if (this.state.performanceMode === 'auto') {
-      if (frameRate < 30 || memoryUsage > 100) {
-        this.setPerformanceMode('low');
-      } else if (frameRate > 50 && memoryUsage < 50) {
-        this.setPerformanceMode('high');
-      }
-    }
-  }
-
   /**
    * Reset state to initial values
    */
@@ -202,9 +176,6 @@ class StateManager {
         features: [],
       },
       activeFilters: new Set(),
-      performanceMode: 'auto',
-      frameRate: 60,
-      memoryUsage: 0,
     };
     
     // Notify subscribers of reset

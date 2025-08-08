@@ -47,7 +47,7 @@ export const MAPBOX_ACCESS_TOKEN: string =
   'pk.eyJ1IjoicHJvamVjdGhlZXJsZW4iLCJhIjoiY2x4eWVmcXBvMWozZTJpc2FqbWgzcnAyeCJ9.SVOVbBG6o1lHs6TwCudR9g';
 
 // Map style
-export const MAP_STYLE: string = 'mapbox://styles/projectheerlen/cm9lkc2ge005301qs86xncirv';
+export const MAP_STYLE: string = 'mapbox://styles/projectheerlen/cm1t3u60e011d01peewgldm85';
 
 // Local storage key
 export const LOCAL_STORAGE_KEY: string = 'heerlenActiveFilters';

@@ -13,6 +13,12 @@ let buttonElements: HTMLElement[] = [];
  * Apply active filters to map markers
  */
 export function applyMapFilters(): void {
+  // Get map instance from state
+  const map = state.map;
+  if (!map) {
+    return; // Map not initialized yet
+  }
+
   // Get current active filters from state
   const currentFilters = state.activeFilters;
   
@@ -31,20 +37,14 @@ export function applyMapFilters(): void {
     ];
   }
 
-  // Apply filter to all marker-related layers (if loaded) - with caching
+  // Apply filter to all marker-related layers (if loaded)
   const layersToFilter = ['location-markers', 'location-icons', 'location-labels'];
   layersToFilter.forEach((layerId) => {
-    // Use cached layer check for performance
-    if (!layerCache.has(layerId)) {
-      layerCache.set(layerId, !!(state.map && state.map.getLayer(layerId)));
-    }
-    
-    if (layerCache.get(layerId)) {
+    if (map.getLayer(layerId)) {
       try {
-        state.map!.setFilter(layerId, filterExpression);
+        map.setFilter(layerId, filterExpression);
       } catch (e) {
-        // Layer might have been removed, update cache
-        layerCache.set(layerId, false);
+        // Layer might not be ready yet
       }
     }
   });
@@ -80,18 +80,20 @@ export function toggleFilter(category: string): void {
  * Setup location filter buttons with caching
  */
 export function setupLocationFilters(): void {
-  // Cache button elements once
-  if (buttonElements.length === 0) {
-    buttonElements = Array.from(document.querySelectorAll('.filter-btn')) as HTMLElement[];
-    buttonElements.forEach((buttonElement) => {
-      const category = (buttonElement.dataset as any).category as string;
-      if (category) {
-        buttonCache.set(category, buttonElement);
-      }
-    });
+  // Only setup once - check if already initialized
+  if (buttonElements.length > 0) {
+    return; // Already initialized
   }
 
+  // Cache button elements and add event listeners
+  buttonElements = Array.from(document.querySelectorAll('.filter-btn')) as HTMLElement[];
+  
   buttonElements.forEach((buttonElement) => {
+    const category = (buttonElement.dataset as any).category as string;
+    if (category) {
+      buttonCache.set(category, buttonElement);
+    }
+
     buttonElement.addEventListener('click', () => {
       const category = (buttonElement.dataset as any).category as string; // UPPERCASE expected
       if (!category) return; // Skip buttons without category

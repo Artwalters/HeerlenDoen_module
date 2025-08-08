@@ -16,6 +16,99 @@ declare global {
   }
 }
 
+// Language detection function
+function detectLanguage(): 'nl' | 'en' | 'de' {
+  const path = window.location.pathname;
+  if (path.includes('/en/')) return 'en';
+  if (path.includes('/de/')) return 'de';
+  return 'nl'; // Default to Dutch
+}
+
+// Translations object
+const translations = {
+  nl: {
+    welcomeMessage: 'Welkom in <strong>Heerlen</strong> deze kaart heeft veel unieke functies die ik je graag uitleg',
+    startTour: 'Start tour',
+    skipTour: 'Skip tour',
+    helpButtonTitle: 'Start rondleiding',
+    helpButtonAriaLabel: 'Start kaart rondleiding',
+    tourSteps: {
+      welcome: 'Ontdek <strong>Heerlen</strong> met deze interactieve kaart. We leiden je even rond!.',
+      mapControls: 'Gebruik deze <strong>knoppen</strong> om in/uit te zoomen en de kaart te draaien.',
+      filters: 'gebruik <strong>filters</strong> om per categorie te zoeken en te ontdekken!',
+      geolocation: 'Klik hier om je <strong>locatie</strong> aan te zetten en direct te zien waar jij je bevindt op de kaart.',
+      tryMarker: 'klik op een van de <strong>gekleurde</strong> rondjes.',
+      markerInstruction: 'Klik op een marker om door te gaan',
+      markerHint: 'Klik op "Skip" als je geen marker kunt vinden',
+      popupInfo: 'Bekijk <strong>informatie</strong> over deze plek en druk op de <strong>like-knop</strong> om deze locatie op te slaan.',
+      likeHeart: 'Klik op het <strong>hartje</strong> om al je opgeslagen favoriete locaties te bekijken.',
+      finish: 'Je bent nu klaar om <strong>Heerlen te verkennen</strong>! Klik op markers om locaties te ontdekken. Je kunt deze rondleiding opnieuw starten via het <strong>?</strong> icoon.'
+    },
+    buttons: {
+      start: 'Start',
+      skip: 'Skip',
+      back: '←',
+      next: '→',
+      ready: 'Klaar'
+    },
+    progressBarClose: 'Sluit rondleiding'
+  },
+  en: {
+    welcomeMessage: 'Welcome to <strong>Heerlen</strong>! This map has many unique features that I\'d like to show you',
+    startTour: 'Start tour',
+    skipTour: 'Skip tour',
+    helpButtonTitle: 'Start tour',
+    helpButtonAriaLabel: 'Start map tour',
+    tourSteps: {
+      welcome: 'Discover <strong>Heerlen</strong> with this interactive map. Let me show you around!',
+      mapControls: 'Use these <strong>buttons</strong> to zoom in/out and rotate the map.',
+      filters: 'Use <strong>filters</strong> to search and discover by category!',
+      geolocation: 'Click here to enable your <strong>location</strong> and see where you are on the map.',
+      tryMarker: 'Click on one of the <strong>colored</strong> circles.',
+      markerInstruction: 'Click on a marker to continue',
+      markerHint: 'Click "Skip" if you can\'t find a marker',
+      popupInfo: 'View <strong>information</strong> about this place and click the <strong>like button</strong> to save this location.',
+      likeHeart: 'Click on the <strong>heart</strong> to view all your saved favorite locations.',
+      finish: 'You\'re now ready to <strong>explore Heerlen</strong>! Click on markers to discover locations. You can restart this tour anytime via the <strong>?</strong> icon.'
+    },
+    buttons: {
+      start: 'Start',
+      skip: 'Skip',
+      back: '←',
+      next: '→',
+      ready: 'Done'
+    },
+    progressBarClose: 'Close tour'
+  },
+  de: {
+    welcomeMessage: 'Willkommen in <strong>Heerlen</strong>! Diese Karte hat viele einzigartige Funktionen, die ich Ihnen gerne zeigen möchte',
+    startTour: 'Tour starten',
+    skipTour: 'Tour überspringen',
+    helpButtonTitle: 'Tour starten',
+    helpButtonAriaLabel: 'Kartentour starten',
+    tourSteps: {
+      welcome: 'Entdecken Sie <strong>Heerlen</strong> mit dieser interaktiven Karte. Lassen Sie mich Ihnen alles zeigen!',
+      mapControls: 'Verwenden Sie diese <strong>Tasten</strong> zum Zoomen und Drehen der Karte.',
+      filters: 'Verwenden Sie <strong>Filter</strong>, um nach Kategorien zu suchen und zu entdecken!',
+      geolocation: 'Klicken Sie hier, um Ihren <strong>Standort</strong> zu aktivieren und zu sehen, wo Sie sich auf der Karte befinden.',
+      tryMarker: 'Klicken Sie auf einen der <strong>farbigen</strong> Kreise.',
+      markerInstruction: 'Klicken Sie auf einen Marker, um fortzufahren',
+      markerHint: 'Klicken Sie auf "Überspringen", wenn Sie keinen Marker finden können',
+      popupInfo: 'Sehen Sie sich <strong>Informationen</strong> über diesen Ort an und klicken Sie auf die <strong>Like-Schaltfläche</strong>, um diesen Ort zu speichern.',
+      likeHeart: 'Klicken Sie auf das <strong>Herz</strong>, um alle Ihre gespeicherten Lieblingsorte anzuzeigen.',
+      finish: 'Sie sind jetzt bereit, <strong>Heerlen zu erkunden</strong>! Klicken Sie auf Marker, um Orte zu entdecken. Sie können diese Tour jederzeit über das <strong>?</strong> Symbol neu starten.'
+    },
+    buttons: {
+      start: 'Start',
+      skip: 'Überspringen',
+      back: '←',
+      next: '→',
+      ready: 'Fertig'
+    },
+    progressBarClose: 'Tour schließen'
+  }
+};
+
 // Tour cleanup tracking
 let tourIntervals: Set<number> = new Set();
 let tourTimeouts: Set<number> = new Set();
@@ -111,14 +204,17 @@ function setupTourSystem(map: Map): void {
  * @param callback - Callback function to execute after welcome
  */
 function showWelcomeMessage(callback: () => void): void {
+  const lang = detectLanguage();
+  const t = translations[lang];
+  
   const overlay = document.createElement('div');
   overlay.className = 'welcome-overlay';
   overlay.innerHTML = `
     <div class="welcome-card">
-      <p> Welkom in <strong>Heerlen</strong> deze kaart heeft veel unieke functies die ik je graag uitleg </p>
+      <p>${t.welcomeMessage}</p>
       <div class="welcome-buttons">
-        <button class="welcome-start-btn">Start tour</button>
-        <button class="welcome-skip-btn">Skip tour</button>
+        <button class="welcome-start-btn">${t.startTour}</button>
+        <button class="welcome-skip-btn">${t.skipTour}</button>
       </div>
     </div>
   `;
@@ -154,6 +250,9 @@ function showWelcomeMessage(callback: () => void): void {
  * @param map - The mapbox map instance
  */
 function addHelpButton(map: Map): void {
+  const lang = detectLanguage();
+  const t = translations[lang];
+  
   // Remove existing help button if any
   const existingButton = document.querySelector('.help-button');
   if (existingButton) {
@@ -163,8 +262,8 @@ function addHelpButton(map: Map): void {
   const helpButton = document.createElement('button');
   helpButton.className = 'help-button';
   helpButton.innerHTML = '?';
-  helpButton.title = 'Start rondleiding';
-  helpButton.setAttribute('aria-label', 'Start kaart rondleiding');
+  helpButton.title = t.helpButtonTitle;
+  helpButton.setAttribute('aria-label', t.helpButtonAriaLabel);
 
   helpButton.addEventListener('click', () => {
     if (window.activeTour && window.activeTour.isActive()) {
@@ -196,6 +295,8 @@ function addHelpButton(map: Map): void {
  * @param map - The mapbox map instance
  */
 export function startTour(map: Map): void {
+  const lang = detectLanguage();
+  const t = translations[lang];
   // Create tour with enhanced options
   const tour = new window.Shepherd.Tour({
     useModalOverlay: false,
@@ -226,6 +327,61 @@ export function startTour(map: Map): void {
     },
   });
 
+  // Add click outside handler for tour
+  const handleClickOutside = (event: MouseEvent) => {
+    // Check if tour is active
+    if (!tour || !tour.isActive()) return;
+    
+    const target = event.target as HTMLElement;
+    
+    // Check if click was directly on the overlay
+    if (target.classList.contains('shepherd-modal-overlay-container')) {
+      tour.cancel();
+      return;
+    }
+    
+    // Check if click was on tour elements
+    const isShepherdElement = target.closest('.shepherd-element');
+    const isHelpButton = target.closest('.help-button');
+    const isProgressBar = target.closest('.shepherd-progress-bar');
+    const isWelcomeOverlay = target.closest('.welcome-overlay');
+    const isInsidePopup = target.closest('.shepherd-content, .shepherd-text, .shepherd-footer, .shepherd-button');
+    
+    // If clicked outside the actual tour popup content, cancel tour
+    if (!isShepherdElement && !isHelpButton && !isProgressBar && !isWelcomeOverlay && !isInsidePopup) {
+      tour.cancel();
+    }
+  };
+
+  // Add drag handler to close tour
+  const handleMapDrag = () => {
+    if (tour && tour.isActive()) {
+      tour.cancel();
+    }
+  };
+
+  // Set up event listeners when tour starts
+  tour.on('start', () => {
+    // Add click outside listener
+    setTimeout(() => {
+      document.addEventListener('click', handleClickOutside);
+    }, 100);
+    
+    // Add map drag listener
+    map.on('dragstart', handleMapDrag);
+  });
+
+  // Clean up event listeners when tour ends
+  tour.on('cancel', () => {
+    document.removeEventListener('click', handleClickOutside);
+    map.off('dragstart', handleMapDrag);
+  });
+
+  tour.on('complete', () => {
+    document.removeEventListener('click', handleClickOutside);
+    map.off('dragstart', handleMapDrag);
+  });
+
   // Store tour reference globally
   window.activeTour = tour;
 
@@ -236,6 +392,14 @@ export function startTour(map: Map): void {
       overlay.style.transition = 'opacity 0.3s ease';
       overlay.classList.add('shepherd-modal-is-visible');
       overlay.style.pointerEvents = 'auto';
+      
+      // Add direct click handler on overlay
+      overlay.onclick = (e) => {
+        // Only close if clicked directly on overlay, not on tour popup
+        if (e.target === overlay) {
+          tour.cancel();
+        }
+      };
     }
   }
 
@@ -245,6 +409,7 @@ export function startTour(map: Map): void {
     if (overlay) {
       overlay.classList.remove('shepherd-modal-is-visible');
       overlay.style.pointerEvents = 'none';
+      overlay.onclick = null; // Clean up click handler
     }
   }
 
@@ -267,10 +432,10 @@ export function startTour(map: Map): void {
   // Step 1: Welcome (with overlay) - no title
   tour.addStep({
     id: 'welcome',
-    text: 'Ontdek <strong>Heerlen</strong> met deze interactieve kaart. We leiden je even rond!.',
+    text: t.tourSteps.welcome,
     buttons: [
       {
-        text: 'Start',
+        text: t.buttons.start,
         action: tour.next,
         classes: 'shepherd-button-primary',
       },
@@ -289,17 +454,17 @@ export function startTour(map: Map): void {
     {
       id: 'map-controls',
       attachTo: safelyGetElement('.mapboxgl-ctrl-top-right', '.mapboxgl-ctrl-group'),
-      text: 'Gebruik deze <strong>knoppen</strong> om in/uit te zoomen en de kaart te draaien.',
+      text: t.tourSteps.mapControls,
     },
     {
       id: 'filters',
       attachTo: safelyGetElement('.map-filter-wrap-2', '.filter-btn'),
-      text: ' gebruik <strong>filters</strong> om per categorie te zoeken en te ontdekken!',
+      text: t.tourSteps.filters,
     },
     {
       id: 'geolocation',
       attachTo: safelyGetElement('.mapboxgl-ctrl-geolocate', '.mapboxgl-ctrl-bottom-right'),
-      text: 'Klik hier om je <strong>locatie</strong> aan te zetten en direct te zien waar jij je bevindt op de kaart.',
+      text: t.tourSteps.geolocation,
     },
   ];
 
@@ -311,12 +476,12 @@ export function startTour(map: Map): void {
         ...stepConfig,
         buttons: [
           {
-            text: '←',
+            text: t.buttons.back,
             action: tour.back,
             classes: 'shepherd-button-secondary',
           },
           {
-            text: '→',
+            text: t.buttons.next,
             action: tour.next,
             classes: 'shepherd-button-primary',
           },
@@ -345,7 +510,7 @@ export function startTour(map: Map): void {
     id: 'try-marker',
     text: `
       <div class="tour-marker-instruction">
-        <p>klik op een van de <strong>gekleurde</strong> rondjes.</p>
+        <p>${t.tourSteps.tryMarker}</p>
         <div class="marker-animation">
           <span class="pulse-dot"></span>
           <span class="instruction-arrow">↓</span>
@@ -354,12 +519,12 @@ export function startTour(map: Map): void {
     `,
     buttons: [
       {
-        text: '←',
+        text: t.buttons.back,
         action: tour.back,
         classes: 'shepherd-button-secondary',
       },
       {
-        text: 'Skip',
+        text: t.buttons.skip,
         action: () => {
           window.tourWaitingForMarkerClick = false;
           tour.show('popup-info');
@@ -374,7 +539,7 @@ export function startTour(map: Map): void {
         // Show floating message to encourage clicking a marker
         const message = document.createElement('div');
         message.className = 'tour-instruction-message';
-        message.textContent = 'Klik op een marker om door te gaan';
+        message.textContent = t.tourSteps.markerInstruction;
         document.body.appendChild(message);
 
         // Set a timeout to remove the message after animation completes
@@ -393,7 +558,7 @@ export function startTour(map: Map): void {
             // If user hasn't clicked after 15 seconds, show hint message
             const hintMessage = document.createElement('div');
             hintMessage.className = 'tour-instruction-message';
-            hintMessage.textContent = 'Klik op "Skip" als je geen marker kunt vinden';
+            hintMessage.textContent = t.tourSteps.markerHint;
             document.body.appendChild(hintMessage);
 
             setTimeout(() => {
@@ -431,15 +596,15 @@ export function startTour(map: Map): void {
       const popup = document.querySelector('.mapboxgl-popup-content');
       return popup ? { element: popup, on: 'top' } : null;
     },
-    text: 'Bekijk <strong>informatie</strong> over deze plek en druk op de <strong>like-knop</strong> om deze locatie op te slaan.',
+    text: t.tourSteps.popupInfo,
     buttons: [
       {
-        text: '←',
+        text: t.buttons.back,
         action: tour.back,
         classes: 'shepherd-button-secondary',
       },
       {
-        text: '→',
+        text: t.buttons.next,
         action: tour.next,
         classes: 'shepherd-button-primary',
       },
@@ -484,15 +649,15 @@ export function startTour(map: Map): void {
   tour.addStep({
     id: 'like-heart-svg',
     attachTo: safelyGetElement('.heart-svg.w-embed', '.like-heart-svg'),
-    text: 'Klik op het <strong>hartje</strong> om al je opgeslagen favoriete locaties te bekijken.',
+    text: t.tourSteps.likeHeart,
     buttons: [
       {
-        text: '←',
+        text: t.buttons.back,
         action: tour.back,
         classes: 'shepherd-button-secondary',
       },
       {
-        text: '→',
+        text: t.buttons.next,
         action: tour.next,
         classes: 'shepherd-button-primary',
       },
@@ -517,10 +682,10 @@ export function startTour(map: Map): void {
   // Final step - minimalist style
   tour.addStep({
     id: 'finish',
-    text: 'Je bent nu klaar om <strong>Heerlen te verkennen</strong>! Klik op markers om locaties te ontdekken. Je kunt deze rondleiding opnieuw starten via het <strong>?</strong> icoon.',
+    text: t.tourSteps.finish,
     buttons: [
       {
-        text: 'Klaar',
+        text: t.buttons.ready,
         action: tour.complete,
         classes: 'shepherd-button-primary',
       },
@@ -595,6 +760,9 @@ export function startTour(map: Map): void {
  * @param tour - The tour instance
  */
 function addProgressBar(tour: any): void {
+  const lang = detectLanguage();
+  const t = translations[lang];
+  
   // Remove existing progress bar if any
   const existingBar = document.querySelector('.shepherd-progress-bar');
   if (existingBar) {
@@ -614,8 +782,8 @@ function addProgressBar(tour: any): void {
   const closeButton = document.createElement('button');
   closeButton.className = 'progress-bar-close-btn'; // Use your existing CSS class
   closeButton.innerHTML = '×'; // The 'x' symbol (HTML entity)
-  closeButton.setAttribute('aria-label', 'Sluit rondleiding'); // For accessibility
-  closeButton.title = 'Sluit rondleiding'; // Tooltip
+  closeButton.setAttribute('aria-label', t.progressBarClose); // For accessibility
+  closeButton.title = t.progressBarClose; // Tooltip
 
   // Add click event listener to cancel the tour
   closeButton.addEventListener('click', () => {

@@ -5,6 +5,42 @@ import type { Map, Popup } from 'mapbox-gl';
 
 import { setActivePopup, state } from './state.js';
 
+// Language detection function
+function detectLanguage(): 'nl' | 'en' | 'de' {
+  const path = window.location.pathname;
+  if (path.includes('/en/')) return 'en';
+  if (path.includes('/de/')) return 'de';
+  return 'nl'; // Default to Dutch
+}
+
+// Popup translations (subset needed for this module)
+const popupTranslations = {
+  nl: {
+    buttons: {
+      back: 'Terug'
+    },
+    aria: {
+      closePopup: 'Sluit popup'
+    }
+  },
+  en: {
+    buttons: {
+      back: 'Back'
+    },
+    aria: {
+      closePopup: 'Close popup'
+    }
+  },
+  de: {
+    buttons: {
+      back: 'Zurück'
+    },
+    aria: {
+      closePopup: 'Popup schließen'
+    }
+  }
+};
+
 /**
  * Beheer top en bottom fade gradients op basis van scroll positie
  * @param description - Het scrollbare element (popup-description)
@@ -368,6 +404,8 @@ export function setupPopupInteractions(popup: Popup, properties: any, coordinate
  * Show a fullscreen image popup
  */
 export function showImagePopup(properties: any, coordinates: any, contentHeight: number): void {
+  const lang = detectLanguage();
+  const t = popupTranslations[lang];
   const isMobile = window.matchMedia('(max-width: 479px)').matches;
 
   const popup = new window.mapboxgl.Popup({
@@ -401,12 +439,12 @@ export function showImagePopup(properties: any, coordinates: any, contentHeight:
       }
     </style>
     <div class="popup-wrapper">
-      <button class="close-button" aria-label="Close popup"></button>
+      <button class="close-button" aria-label="${t.aria.closePopup}"></button>
       <div class="popup-side">
         <div class="image-container">
           <img src="${properties.image}" alt="${properties.name}" class="full-image">
           <div class="button-container">
-            <button class="back-button">Terug</button>
+            <button class="back-button">${t.buttons.back}</button>
           </div>
           <div class="location-name">${properties.name}</div>
         </div>

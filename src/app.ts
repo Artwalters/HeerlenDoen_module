@@ -32,7 +32,6 @@ import { state } from './modules/state.js';
 import { setupThreeJSLayer } from './modules/threejs.js';
 import { initialize3DSettings } from './modules/toggle3D.js';
 import { initializeTour } from './modules/tour.js';
-import { performanceMonitor } from './modules/performanceMonitor.js';
 import { eventBus, Events } from './modules/eventBus.js';
 import { resourceManager } from './modules/resourceManager.js';
 
@@ -59,9 +58,6 @@ window.Webflow ||= [];
 window.Webflow.push(async (): Promise<void> => {
 
   try {
-    // Start performance monitoring
-    performanceMonitor.start();
-    
     // Initialize map
     const map = initializeMap();
 
@@ -116,7 +112,6 @@ window.Webflow.push(async (): Promise<void> => {
 // Global cleanup function for page unload
 window.addEventListener('beforeunload', () => {
   // Clean up all systems
-  performanceMonitor.cleanup();
   resourceManager.cleanup();
   eventBus.cleanup();
   
