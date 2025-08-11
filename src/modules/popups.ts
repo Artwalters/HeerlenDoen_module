@@ -32,22 +32,23 @@ const popupTranslations = {
       instruction: 'Instructie',
       back: 'Terug',
       impression: 'Impressie',
-      moreInfo: 'Meer info'
+      moreInfo: 'Meer info',
     },
     titles: {
-      instruction: 'Instructie'
+      instruction: 'Instructie',
     },
     messages: {
       arMobileOnly: 'Deze AR-ervaring is alleen beschikbaar op mobiele apparaten',
-      snapchatRequired: 'Om deze AR ervaring te gebruiken heb je Snapchat nodig. Wil je Snapchat downloaden?',
-      defaultARInstruction: 'Bekijk deze AR ervaring op je telefoon of desktop.'
+      snapchatRequired:
+        'Om deze AR ervaring te gebruiken heb je Snapchat nodig. Wil je Snapchat downloaden?',
+      defaultARInstruction: 'Bekijk deze AR ervaring op je telefoon of desktop.',
     },
     aria: {
       closePopup: 'Sluit popup',
       website: 'Website',
       instagram: 'Instagram',
-      facebook: 'Facebook'
-    }
+      facebook: 'Facebook',
+    },
   },
   en: {
     buttons: {
@@ -55,22 +56,23 @@ const popupTranslations = {
       instruction: 'Instruction',
       back: 'Back',
       impression: 'Impression',
-      moreInfo: 'More info'
+      moreInfo: 'More info',
     },
     titles: {
-      instruction: 'Instruction'
+      instruction: 'Instruction',
     },
     messages: {
       arMobileOnly: 'This AR experience is only available on mobile devices',
-      snapchatRequired: 'You need Snapchat to use this AR experience. Would you like to download Snapchat?',
-      defaultARInstruction: 'View this AR experience on your phone or desktop.'
+      snapchatRequired:
+        'You need Snapchat to use this AR experience. Would you like to download Snapchat?',
+      defaultARInstruction: 'View this AR experience on your phone or desktop.',
     },
     aria: {
       closePopup: 'Close popup',
       website: 'Website',
       instagram: 'Instagram',
-      facebook: 'Facebook'
-    }
+      facebook: 'Facebook',
+    },
   },
   de: {
     buttons: {
@@ -78,23 +80,24 @@ const popupTranslations = {
       instruction: 'Anleitung',
       back: 'Zurück',
       impression: 'Eindruck',
-      moreInfo: 'Mehr Info'
+      moreInfo: 'Mehr Info',
     },
     titles: {
-      instruction: 'Anleitung'
+      instruction: 'Anleitung',
     },
     messages: {
       arMobileOnly: 'Diese AR-Erfahrung ist nur auf mobilen Geräten verfügbar',
-      snapchatRequired: 'Sie benötigen Snapchat für diese AR-Erfahrung. Möchten Sie Snapchat herunterladen?',
-      defaultARInstruction: 'Sehen Sie sich diese AR-Erfahrung auf Ihrem Telefon oder Desktop an.'
+      snapchatRequired:
+        'Sie benötigen Snapchat für diese AR-Erfahrung. Möchten Sie Snapchat herunterladen?',
+      defaultARInstruction: 'Sehen Sie sich diese AR-Erfahrung auf Ihrem Telefon oder Desktop an.',
     },
     aria: {
       closePopup: 'Popup schließen',
       website: 'Webseite',
       instagram: 'Instagram',
-      facebook: 'Facebook'
-    }
-  }
+      facebook: 'Facebook',
+    },
+  },
 };
 
 /**
@@ -315,7 +318,7 @@ export function createARButton(
 export function handleSnapchatLink(snapchatUri: string): void {
   const lang = detectLanguage();
   const t = popupTranslations[lang];
-  
+
   // Snapchat App Store/Google Play links
   const appStoreLink = 'https://apps.apple.com/app/snapchat/id447188370';
   const playStoreLink = 'https://play.google.com/store/apps/details?id=com.snapchat.android';
@@ -354,8 +357,8 @@ function hexToRgba(hex: string, alpha: number = 1): string {
     const b = parseInt(result[3], 16);
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
   }
-  // Fallback to default purple
-  return `rgba(107, 70, 193, ${alpha})`;
+  // Fallback to transparent
+  return `rgba(0, 0, 0, 0)`;
 }
 
 export function createPopupContent(properties: any): { styles: string; html: string } {
@@ -379,7 +382,7 @@ export function createPopupContent(properties: any): { styles: string; html: str
   right: 20px;
   height: 3.5em;
   /* Gebruik dezelfde kleur als de popup maar met transparantie */
-  background: linear-gradient(to top, ${hexToRgba(properties.color || '#6B46C1', 1)} 0%, ${hexToRgba(properties.color || '#6B46C1', 0)} 100%);
+  background: linear-gradient(to top, ${properties.color ? hexToRgba(properties.color, 1) : 'transparent'} 0%, transparent 100%);
   pointer-events: none;
   z-index: 2;
   transition: opacity 0.3s ease;
@@ -397,7 +400,7 @@ export function createPopupContent(properties: any): { styles: string; html: str
   right: 20px;
   height: 3.5em;
   /* Gespiegelde gradient vergeleken met de bottom fade */
-  background: linear-gradient(to bottom, ${hexToRgba(properties.color || '#6B46C1', 1)} 0%, ${hexToRgba(properties.color || '#6B46C1', 0)} 100%);
+  background: linear-gradient(to bottom, ${properties.color ? hexToRgba(properties.color, 1) : 'transparent'} 0%, transparent 100%);
   pointer-events: none;
   z-index: 2;
   transition: opacity 0.3s ease;

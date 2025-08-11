@@ -72,22 +72,26 @@ export function setupMapLoadHandler(map: Map): void {
       setupLocationFilters();
     });
 
-    // Initial animation on load
+    // Initial animation on load - Start at station, fly to destination
     setTimeout(() => {
-      const finalZoom = window.matchMedia('(max-width: 479px)').matches ? 17 : 18;
+      const finalZoom = window.matchMedia('(max-width: 479px)').matches ? 16.5 : 17; // Iets meer ingezoomd
+      const stationCoords: [number, number] = [5.975338618538545, 50.89054201081809];
+      const destinationCoords: [number, number] = [5.977246733617121, 50.888996872875126];
 
+      // Start position at station (bird's eye view)
       map.jumpTo({
-        center: CONFIG.MAP.center,
-        zoom: 15,
+        center: stationCoords,
+        zoom: 14, // Iets meer ingezoomd bij start
         pitch: 0,
         bearing: 0,
       });
 
+      // Fly to destination with camera rotation (180 degrees rotated)
       map.flyTo({
-        center: CONFIG.MAP.center,
+        center: destinationCoords,
         zoom: finalZoom,
-        pitch: 55,
-        bearing: -17.6,
+        pitch: 35, // Lagere pitch voor meer bovenaanzicht
+        bearing: 162.4, // -17.6 + 180 = 162.4
         duration: 6000,
         essential: true,
         easing: (t: number) => t * (2 - t), // Ease out quad
