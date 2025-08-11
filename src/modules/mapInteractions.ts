@@ -96,7 +96,7 @@ export function setupMapLoadHandler(map: Map): void {
         essential: true,
         easing: (t: number) => t * (2 - t), // Ease out quad
       });
-    }, 5000);
+    }, 3000); // Start animatie na 3 seconden
   });
 }
 
