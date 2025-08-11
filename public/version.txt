@@ -1,3 +1,4 @@
-Version: 2025-01-08-15:35
-Filter fix applied
+Version: 2025-01-08-14:02
+Popup gradient fix: transparent fallback
+Map animation: station to destination fly-to
 Built from TypeScript modules
