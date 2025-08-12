@@ -37,9 +37,9 @@ const translations = {
       mapControls: 'Gebruik deze <strong>knoppen</strong> om in/uit te zoomen en de kaart te draaien.',
       filters: 'gebruik <strong>filters</strong> om per categorie te zoeken en te ontdekken!',
       geolocation: 'Klik hier om je <strong>locatie</strong> aan te zetten en direct te zien waar jij je bevindt op de kaart.',
-      tryMarker: 'klik op een van de <strong>gekleurde</strong> rondjes.',
-      markerInstruction: 'Klik op een marker om door te gaan',
-      markerHint: 'Klik op "Skip" als je geen marker kunt vinden',
+      tryMarker: 'Klik op de <strong>gekleurde</strong> rondjes om meer informatie over locaties te bekijken.',
+      markerInstruction: 'Een voorbeeld marker wordt automatisch geopend',
+      markerHint: 'Marker wordt automatisch geopend',
       popupInfo: 'Bekijk <strong>informatie</strong> over deze plek en druk op de <strong>like-knop</strong> om deze locatie op te slaan.',
       likeHeart: 'Klik op het <strong>hartje</strong> om al je opgeslagen favoriete locaties te bekijken.',
       finish: 'Je bent nu klaar om <strong>Heerlen te verkennen</strong>! Klik op markers om locaties te ontdekken. Je kunt deze rondleiding opnieuw starten via het <strong>?</strong> icoon.'
@@ -64,9 +64,9 @@ const translations = {
       mapControls: 'Use these <strong>buttons</strong> to zoom in/out and rotate the map.',
       filters: 'Use <strong>filters</strong> to search and discover by category!',
       geolocation: 'Click here to enable your <strong>location</strong> and see where you are on the map.',
-      tryMarker: 'Click on one of the <strong>colored</strong> circles.',
-      markerInstruction: 'Click on a marker to continue',
-      markerHint: 'Click "Skip" if you can\'t find a marker',
+      tryMarker: 'Click on the <strong>colored</strong> circles to view more information about locations.',
+      markerInstruction: 'A sample marker will be opened automatically',
+      markerHint: 'Marker will open automatically',
       popupInfo: 'View <strong>information</strong> about this place and click the <strong>like button</strong> to save this location.',
       likeHeart: 'Click on the <strong>heart</strong> to view all your saved favorite locations.',
       finish: 'You\'re now ready to <strong>explore Heerlen</strong>! Click on markers to discover locations. You can restart this tour anytime via the <strong>?</strong> icon.'
@@ -91,9 +91,9 @@ const translations = {
       mapControls: 'Verwenden Sie diese <strong>Tasten</strong> zum Zoomen und Drehen der Karte.',
       filters: 'Verwenden Sie <strong>Filter</strong>, um nach Kategorien zu suchen und zu entdecken!',
       geolocation: 'Klicken Sie hier, um Ihren <strong>Standort</strong> zu aktivieren und zu sehen, wo Sie sich auf der Karte befinden.',
-      tryMarker: 'Klicken Sie auf einen der <strong>farbigen</strong> Kreise.',
-      markerInstruction: 'Klicken Sie auf einen Marker, um fortzufahren',
-      markerHint: 'Klicken Sie auf "Überspringen", wenn Sie keinen Marker finden können',
+      tryMarker: 'Klicken Sie auf die <strong>farbigen</strong> Kreise, um mehr Informationen über Standorte anzuzeigen.',
+      markerInstruction: 'Ein Beispielmarker wird automatisch geöffnet',
+      markerHint: 'Marker wird automatisch geöffnet',
       popupInfo: 'Sehen Sie sich <strong>Informationen</strong> über diesen Ort an und klicken Sie auf die <strong>Like-Schaltfläche</strong>, um diesen Ort zu speichern.',
       likeHeart: 'Klicken Sie auf das <strong>Herz</strong>, um alle Ihre gespeicherten Lieblingsorte anzuzeigen.',
       finish: 'Sie sind jetzt bereit, <strong>Heerlen zu erkunden</strong>! Klicken Sie auf Marker, um Orte zu entdecken. Sie können diese Tour jederzeit über das <strong>?</strong> Symbol neu starten.'
@@ -505,16 +505,12 @@ export function startTour(map: Map): void {
     }
   });
 
-  // Marker instruction step with minimalist design
+  // Marker instruction step - automatically open a marker
   tour.addStep({
     id: 'try-marker',
     text: `
       <div class="tour-marker-instruction">
         <p>${t.tourSteps.tryMarker}</p>
-        <div class="marker-animation">
-          <span class="pulse-dot"></span>
-          <span class="instruction-arrow">↓</span>
-        </div>
       </div>
     `,
     buttons: [
@@ -524,57 +520,57 @@ export function startTour(map: Map): void {
         classes: 'shepherd-button-secondary',
       },
       {
-        text: t.buttons.skip,
+        text: t.buttons.next,
         action: () => {
-          window.tourWaitingForMarkerClick = false;
           tour.show('popup-info');
         },
-        classes: 'shepherd-button-secondary',
+        classes: 'shepherd-button-primary',
       },
     ],
     when: {
       show: function () {
-        disableOverlay(); // Disable overlay to allow marker clicking
+        disableOverlay(); // Disable overlay to allow interaction
 
-        // Show floating message to encourage clicking a marker
-        const message = document.createElement('div');
-        message.className = 'tour-instruction-message';
-        message.textContent = t.tourSteps.markerInstruction;
-        document.body.appendChild(message);
-
-        // Set a timeout to remove the message after animation completes
+        // Automatically click a random visible marker after a short delay
         setTimeout(() => {
-          if (message.parentNode) {
-            message.parentNode.removeChild(message);
+          // Query rendered features from the map layers
+          const features = map.queryRenderedFeatures({ 
+            layers: ['location-markers', 'location-icons'] 
+          });
+          
+          if (features && features.length > 0) {
+            // Filter to get only visible features (not filtered out)
+            const visibleFeatures = features.filter(feature => {
+              // Check if feature has valid coordinates
+              return feature.geometry && 
+                     feature.geometry.type === 'Point' && 
+                     feature.geometry.coordinates;
+            });
+            
+            if (visibleFeatures.length > 0) {
+              // Select a random visible feature
+              const randomIndex = Math.floor(Math.random() * visibleFeatures.length);
+              const selectedFeature = visibleFeatures[randomIndex];
+              const coordinates = selectedFeature.geometry.coordinates.slice();
+              
+              // Fire click event on the map at the feature's location
+              // This will trigger the same popup handler as a real click
+              map.fire('click', {
+                lngLat: coordinates,
+                point: map.project(coordinates),
+                features: [selectedFeature],
+                originalEvent: new MouseEvent('click')
+              });
+              
+              // Proceed to popup info step after popup opens and flyTo completes
+              setTimeout(() => {
+                tour.show('popup-info');
+              }, 2000); // Give time for flyTo animation
+            }
           }
-        }, 4000);
-
-        // Mark this step as waiting for marker click
-        window.tourWaitingForMarkerClick = true;
-
-        // Create a fallback to next step in case the user can't find a marker to click
-        window.markerClickFallbackTimer = window.setTimeout(() => {
-          if (window.tourWaitingForMarkerClick) {
-            // If user hasn't clicked after 15 seconds, show hint message
-            const hintMessage = document.createElement('div');
-            hintMessage.className = 'tour-instruction-message';
-            hintMessage.textContent = t.tourSteps.markerHint;
-            document.body.appendChild(hintMessage);
-
-            setTimeout(() => {
-              if (hintMessage.parentNode) {
-                hintMessage.parentNode.removeChild(hintMessage);
-              }
-            }, 5000);
-          }
-        }, 15000);
+        }, 500);
       },
       hide: function () {
-        // Clear any fallback timers when leaving this step
-        if (window.markerClickFallbackTimer) {
-          clearTimeout(window.markerClickFallbackTimer);
-        }
-
         // Remove any lingering instruction messages
         const messages = document.querySelectorAll('.tour-instruction-message');
         messages.forEach((msg) => {
@@ -584,9 +580,6 @@ export function startTour(map: Map): void {
         });
       },
     },
-    // Prevent advancing with keyboard navigation
-    canClickTarget: false,
-    advanceOn: null,
   });
 
   // Popup info step

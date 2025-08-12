@@ -26,6 +26,48 @@ interface GeolocationError {
   message: string;
 }
 
+// Language detection function
+function detectLanguage(): 'nl' | 'en' | 'de' {
+  const path = window.location.pathname;
+  if (path.includes('/en/')) return 'en';
+  if (path.includes('/de/')) return 'de';
+  return 'nl'; // Default to Dutch
+}
+
+// Boundary popup translations
+const boundaryTranslations = {
+  nl: {
+    heading: 'Kom naar Heerlen',
+    message: 'Deze functie is alleen beschikbaar binnen de blauwe cirkel op de kaart. Kom naar het centrum van Heerlen om de interactieve kaart te gebruiken!',
+    errorMessages: {
+      denied: 'Locatie toegang geweigerd. Schakel het in bij je instellingen.',
+      unavailable: 'Locatie niet beschikbaar. Controleer je apparaat instellingen.',
+      timeout: 'Verzoek verlopen. Probeer opnieuw.',
+      default: 'Er is een fout opgetreden bij het ophalen van je locatie.'
+    }
+  },
+  en: {
+    heading: 'Come to Heerlen',
+    message: 'This feature is only available within the blue circle on the map. Come to the center of Heerlen to use the interactive map!',
+    errorMessages: {
+      denied: 'Location access denied. Please enable it in your settings.',
+      unavailable: 'Location not available. Check your device settings.',
+      timeout: 'Request timed out. Please try again.',
+      default: 'An error occurred while getting your location.'
+    }
+  },
+  de: {
+    heading: 'Komm nach Heerlen',
+    message: 'Diese Funktion ist nur innerhalb des blauen Kreises auf der Karte verfügbar. Kommen Sie ins Zentrum von Heerlen, um die interaktive Karte zu nutzen!',
+    errorMessages: {
+      denied: 'Standortzugriff verweigert. Bitte aktivieren Sie ihn in Ihren Einstellungen.',
+      unavailable: 'Standort nicht verfügbar. Überprüfen Sie Ihre Geräteeinstellungen.',
+      timeout: 'Anfrage abgelaufen. Bitte versuchen Sie es erneut.',
+      default: 'Beim Abrufen Ihres Standorts ist ein Fehler aufgetreten.'
+    }
+  }
+};
+
 export class GeolocationManager {
   private map: Map;
   private searchRadiusId: string;
@@ -39,7 +81,6 @@ export class GeolocationManager {
   public geolocateControl?: GeolocateControl;
   private isFirstLocation: boolean;
   private isTracking: boolean;
-  private userInitiatedGeolocation: boolean;
   public wasTracking?: boolean;
   private eventListeners: Array<{element: any, event: string, handler: Function}> = [];
   private timeouts: Set<number> = new Set();
@@ -57,7 +98,6 @@ export class GeolocationManager {
     this.boundaryRadius = CONFIG.MAP.boundary.radius;
     this.isFirstLocation = true;
     this.isTracking = false;
-    this.userInitiatedGeolocation = false;
     this.initialize();
   }
 
@@ -234,91 +274,64 @@ export class GeolocationManager {
 
     this.isFirstLocation = true;
     this.isTracking = false;
-    this.userInitiatedGeolocation = false;
 
     // Override the original _onSuccess method from the geolocate control
     const originalOnSuccess = (this.geolocateControl as any)._onSuccess;
     (this.geolocateControl as any)._onSuccess = (position: GeolocationPosition) => {
       const userPosition: [number, number] = [position.coords.longitude, position.coords.latitude];
-      // Debug info
-
       const isWithin = this.isWithinBoundary(userPosition);
-      // Debug info
 
-      // Only do boundary check if user clicked the button
-      if (this.userInitiatedGeolocation && !isWithin) {
-        // Debug info
-
-        // Reset geolocate control state
+      // Check boundary on every location update
+      if (!isWithin) {
+        // Stop tracking immediately
         (this.geolocateControl as any)._watchState = 'OFF';
+        
+        // Update button state
         if ((this.geolocateControl as any)._geolocateButton) {
           (this.geolocateControl as any)._geolocateButton.classList.remove(
-            'mapboxgl-ctrl-geolocate-active'
-          );
-          (this.geolocateControl as any)._geolocateButton.classList.remove(
+            'mapboxgl-ctrl-geolocate-active',
             'mapboxgl-ctrl-geolocate-waiting'
           );
-          // Debug info
         }
 
-        // Show boundary popup and highlight boundary
-        this.showBoundaryLayers();
-        // Debug info
-        this.showBoundaryPopup();
-
-        // Remove any user location marker that might have been added
+        // Remove any user location marker
         if ((this.geolocateControl as any)._userLocationDotMarker) {
-          // Debug info
           (this.geolocateControl as any)._userLocationDotMarker.remove();
         }
 
-        this.userInitiatedGeolocation = false;
-        // Debug info
+        // Show boundary and popup
+        this.showBoundaryLayers();
+        this.showBoundaryPopup();
+        
+        // Don't call original success handler
         return;
       }
 
-      // Debug info
+      // User is within boundary - proceed normally
       originalOnSuccess.call(this.geolocateControl, position);
-      this.userInitiatedGeolocation = false;
-      // Debug info
+      this.handleUserLocation(position);
     };
 
     // Handle errors
     this.geolocateControl.on('error', (error: GeolocationError) => {
-      // Debug info
-      if (this.userInitiatedGeolocation) {
-        // Debug info
-        this.handleGeolocationError(error);
-      } else {
-        // Debug info
-      }
-      this.userInitiatedGeolocation = false;
-      // Debug info
+      this.handleGeolocationError(error);
+      // Show boundary on error as fallback
+      this.showBoundaryLayers();
     });
 
-    // Setup the button click handler
-    this.map.once('idle', () => {
-      const geolocateButton = document.querySelector('.mapboxgl-ctrl-geolocate');
-      if (geolocateButton && geolocateButton.parentElement) {
-        geolocateButton.addEventListener(
-          'click',
-          (event) => {
-            // Debug info
-            this.userInitiatedGeolocation = true;
-            // Debug info
-            this.showBoundaryLayers();
-          },
-          true
-        );
-      } else {
-        // Debug info
-      }
-    });
-
+    // Show boundaries immediately when user starts tracking
     this.geolocateControl.on('trackuserlocationstart', () => {
       // Debug info
       this.isTracking = true;
       this.showBoundaryLayers();
+    });
+    
+    // Also show boundaries when geolocate is triggered
+    this.geolocateControl.on('geolocate', () => {
+      // Show boundaries on first geolocate event
+      if (!this.isTracking) {
+        this.showBoundaryLayers();
+      }
     });
 
     this.geolocateControl.on('trackuserlocationend', () => {
@@ -584,13 +597,15 @@ export class GeolocationManager {
    */
   private handleGeolocationError(error: GeolocationError): void {
     // Debug info
+    const lang = detectLanguage();
+    const t = boundaryTranslations[lang];
 
     const errorMessages: Record<number, string> = {
-      1: 'Locatie toegang geweigerd. Schakel het in bij je instellingen.',
-      2: 'Locatie niet beschikbaar. Controleer je apparaat instellingen.',
-      3: 'Verzoek verlopen. Probeer opnieuw.',
+      1: t.errorMessages.denied,
+      2: t.errorMessages.unavailable,
+      3: t.errorMessages.timeout,
     };
-    const defaultMessage = 'Er is een fout opgetreden bij het ophalen van je locatie.';
+    const defaultMessage = t.errorMessages.default;
 
     this.showNotification(errorMessages[error.code] || defaultMessage);
   }
@@ -679,13 +694,21 @@ export class GeolocationManager {
    */
   private showBoundaryPopup(): void {
     // Debug info
+    const lang = detectLanguage();
+    const t = boundaryTranslations[lang];
 
-    // Remove existing popup if any
+    // Remove existing popup and cleanup if any
     const existingPopup = document.querySelector('.location-boundary-popup');
     if (existingPopup) {
       // Debug info
       existingPopup.remove();
     }
+    
+    // Clean up any existing event listeners from previous popups
+    this.map.off('dragstart');
+    this.map.off('zoomstart');
+    this.map.off('pitchstart');
+    this.map.off('rotatestart');
 
     // Create new popup
     const popup = document.createElement('div');
@@ -693,18 +716,19 @@ export class GeolocationManager {
     this.boundaryPopup = popup; // Track for cleanup
 
     const heading = document.createElement('h3');
-    heading.textContent = 'Kom naar Heerlen';
+    heading.textContent = t.heading;
 
     const text = document.createElement('p');
-    text.textContent =
-      'Deze functie is alleen beschikbaar binnen de blauwe cirkel op de kaart. Kom naar het centrum van Heerlen om de interactieve kaart te gebruiken!';
+    text.textContent = t.message;
 
-    const button = document.createElement('button');
-    button.textContent = 'Ik kom er aan!';
-
-    // Handle button click
+    // Function to hide popup
     const self = this;
-    button.addEventListener('click', function () {
+    let isHiding = false; // Prevent multiple hide calls
+    
+    const hidePopup = (skipAnimation: boolean = false) => {
+      if (isHiding || !popup.parentNode) return; // Already hiding or removed
+      isHiding = true;
+      
       // Debug info
       if (window.innerWidth <= 768) {
         popup.style.transform = 'translateY(100%)';
@@ -712,36 +736,65 @@ export class GeolocationManager {
         popup.style.transform = 'translateX(120%)';
       }
 
-      this.addTrackedTimeout(() => {
-        popup.remove();
-        if (this.boundaryPopup === popup) {
-          this.boundaryPopup = undefined;
+      self.addTrackedTimeout(() => {
+        if (popup.parentNode) {
+          popup.remove();
+        }
+        if (self.boundaryPopup === popup) {
+          self.boundaryPopup = undefined;
         }
       }, 600);
 
-      this.addTrackedTimeout(() => {
+      self.addTrackedTimeout(() => {
         self.hideBoundaryLayers();
       }, 200);
 
-      // Fly back to intro animation location
-      const finalZoom = window.matchMedia('(max-width: 479px)').matches ? 17 : 18;
+      // Remove all event listeners
+      self.map.off('dragstart', mapInteractionHandler);
+      self.map.off('zoomstart', mapInteractionHandler);
+      self.map.off('pitchstart', mapInteractionHandler);
+      self.map.off('rotatestart', mapInteractionHandler);
+      
+      // Only fly back if not triggered by user interaction
+      if (!skipAnimation) {
+        const finalZoom = window.matchMedia('(max-width: 479px)').matches ? 17 : 18;
 
-      // Debug info
-      self.map.flyTo({
-        center: CONFIG.MAP.center,
-        zoom: finalZoom,
-        pitch: 55,
-        bearing: -17.6,
-        duration: 3000,
-        essential: true,
-        easing: (t: number) => t * (2 - t),
-      });
-    });
+        // Debug info
+        self.map.flyTo({
+          center: CONFIG.MAP.center,
+          zoom: finalZoom,
+          pitch: 55,
+          bearing: -17.6,
+          duration: 3000,
+          essential: true,
+          easing: (t: number) => t * (2 - t),
+        });
+      }
+    };
 
-    // Assemble popup
+    // Auto-hide after 5 seconds (with animation)
+    const autoHideTimeout = self.addTrackedTimeout(() => {
+      hidePopup(false);
+    }, 5000);
+
+    // Hide on map interaction (without animation)
+    const mapInteractionHandler = () => {
+      if (!isHiding) {
+        clearTimeout(autoHideTimeout);
+        self.timeouts.delete(autoHideTimeout);
+        hidePopup(true); // Skip animation when user interacts
+      }
+    };
+
+    // Add map interaction listeners
+    self.map.on('dragstart', mapInteractionHandler);
+    self.map.on('zoomstart', mapInteractionHandler);
+    self.map.on('pitchstart', mapInteractionHandler);
+    self.map.on('rotatestart', mapInteractionHandler);
+
+    // Assemble popup (without button)
     popup.appendChild(heading);
     popup.appendChild(text);
-    popup.appendChild(button);
     document.body.appendChild(popup);
     // Debug info
 
@@ -763,19 +816,15 @@ export class GeolocationManager {
       // Debug info
     }
 
-    // Fly to center to show the boundary (only if not already flying)
-    if (!this.map.isMoving() && !this.map.isEasing()) {
-      // Debug info
-      this.map.flyTo({
-        center: this.centerPoint,
-        zoom: 14,
-        pitch: 0,
-        bearing: 0,
-        duration: 1500,
-      });
-    } else {
-      // Debug info
-    }
+    // Always fly to center to show the boundary
+    // Debug info
+    this.map.flyTo({
+      center: this.centerPoint,
+      zoom: 15.5, // Consistent with button click handler
+      pitch: 0,
+      bearing: 0,
+      duration: 1500,
+    });
 
     // Show popup with animation
     requestAnimationFrame(() => {
@@ -845,8 +894,8 @@ export class GeolocationManager {
   /**
    * Helper to track event listeners for cleanup
    */
-  private addTrackedEventListener(element: any, event: string, handler: Function): void {
-    element.addEventListener(event, handler);
+  private addTrackedEventListener(element: any, event: string, handler: Function, useCapture: boolean = false): void {
+    element.addEventListener(event, handler, useCapture);
     this.eventListeners.push({element, event, handler});
   }
 

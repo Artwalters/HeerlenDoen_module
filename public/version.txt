@@ -1,4 +1,1 @@
-Version: 2025-01-08-14:09
-Popup gradient fix: transparent fallback
-Map animation: station to destination fly-to (starts after 3 seconds)
-Built from TypeScript modules
+202508121409
