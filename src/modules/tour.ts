@@ -241,6 +241,8 @@ function showWelcomeMessage(callback: () => void): void {
     overlay.style.opacity = '0';
     setTimeout(() => {
       overlay.remove();
+      // Also set localStorage when skipping, so tour doesn't show again
+      localStorage.setItem('heerlenMapWalkthroughShown', 'true');
     }, 500);
   });
 }
