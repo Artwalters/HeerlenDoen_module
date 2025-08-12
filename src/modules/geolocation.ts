@@ -13,6 +13,42 @@ declare global {
   }
 }
 
+// Language detection function
+function detectLanguage(): 'nl' | 'en' | 'de' {
+  const path = window.location.pathname;
+  if (path.includes('/en/')) return 'en';
+  if (path.includes('/de/')) return 'de';
+  return 'nl'; // Default to Dutch
+}
+
+// Translations for boundary popup
+const boundaryTranslations = {
+  nl: {
+    title: 'Kom naar Heerlen',
+    message: 'Deze functie is alleen beschikbaar binnen de blauwe cirkel op de kaart. Kom naar het centrum van Heerlen om de interactieve kaart te gebruiken!',
+    locationDenied: 'Locatie toegang geweigerd. Schakel het in bij je instellingen.',
+    locationUnavailable: 'Locatie niet beschikbaar. Controleer je apparaat instellingen.',
+    locationTimeout: 'Verzoek verlopen. Probeer opnieuw.',
+    locationError: 'Er is een fout opgetreden bij het ophalen van je locatie.'
+  },
+  en: {
+    title: 'Come to Heerlen',
+    message: 'This feature is only available within the blue circle on the map. Come to the center of Heerlen to use the interactive map!',
+    locationDenied: 'Location access denied. Please enable it in your settings.',
+    locationUnavailable: 'Location not available. Check your device settings.',
+    locationTimeout: 'Request timed out. Please try again.',
+    locationError: 'An error occurred while getting your location.'
+  },
+  de: {
+    title: 'Kommen Sie nach Heerlen',
+    message: 'Diese Funktion ist nur innerhalb des blauen Kreises auf der Karte verfügbar. Kommen Sie ins Zentrum von Heerlen, um die interaktive Karte zu nutzen!',
+    locationDenied: 'Standortzugriff verweigert. Bitte aktivieren Sie ihn in Ihren Einstellungen.',
+    locationUnavailable: 'Standort nicht verfügbar. Überprüfen Sie Ihre Geräteeinstellungen.',
+    locationTimeout: 'Anfrage abgelaufen. Bitte versuchen Sie es erneut.',
+    locationError: 'Beim Abrufen Ihres Standorts ist ein Fehler aufgetreten.'
+  }
+};
+
 interface GeolocationPosition {
   coords: {
     longitude: number;
@@ -585,12 +621,16 @@ export class GeolocationManager {
   private handleGeolocationError(error: GeolocationError): void {
     // Debug info
 
+    // Get current language
+    const lang = detectLanguage();
+    const t = boundaryTranslations[lang];
+
     const errorMessages: Record<number, string> = {
-      1: 'Locatie toegang geweigerd. Schakel het in bij je instellingen.',
-      2: 'Locatie niet beschikbaar. Controleer je apparaat instellingen.',
-      3: 'Verzoek verlopen. Probeer opnieuw.',
+      1: t.locationDenied,
+      2: t.locationUnavailable,
+      3: t.locationTimeout,
     };
-    const defaultMessage = 'Er is een fout opgetreden bij het ophalen van je locatie.';
+    const defaultMessage = t.locationError;
 
     this.showNotification(errorMessages[error.code] || defaultMessage);
   }
@@ -680,6 +720,10 @@ export class GeolocationManager {
   private showBoundaryPopup(): void {
     // Debug info
 
+    // Get current language
+    const lang = detectLanguage();
+    const t = boundaryTranslations[lang];
+
     // Remove existing popup if any
     const existingPopup = document.querySelector('.location-boundary-popup');
     if (existingPopup) {
@@ -693,11 +737,10 @@ export class GeolocationManager {
     this.boundaryPopup = popup; // Track for cleanup
 
     const heading = document.createElement('h3');
-    heading.textContent = 'Kom naar Heerlen';
+    heading.textContent = t.title;
 
     const text = document.createElement('p');
-    text.textContent =
-      'Deze functie is alleen beschikbaar binnen de blauwe cirkel op de kaart. Kom naar het centrum van Heerlen om de interactieve kaart te gebruiken!';
+    text.textContent = t.message;
 
     // Auto-close after 3 seconds
     const self = this;
